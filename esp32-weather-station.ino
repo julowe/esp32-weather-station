@@ -8,7 +8,8 @@ GxEPD2_3C<GxEPD2_270c, GxEPD2_270c::HEIGHT> display(GxEPD2_270c(/*CS=*/ 15, /*DC
 // Screen used
 #include "bitmaps/Bitmaps3c176x264.h" // 2.7"  b/w/r
 
-#include <TimeLib.h>
+//#include "TimeLib/TimeLib.h"
+#include <Time.h>
 #include <WiFi.h>
 #include <HTTPClient.h>
 #include <Arduino_JSON.h>
