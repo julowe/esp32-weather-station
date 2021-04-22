@@ -1,4 +1,5 @@
 #define WIFI_SSID  "SSID"
 #define WIFI_PASSWORD "PASSWORD"
 
+//use decimal degrees for latitude and longitude - e.g. `lat=88.9876`
 #define URL "http://api.openweathermap.org/data/2.5/onecall?units=metric&exclude=minutely&appid={APIKEY}&lat={lat}&lon={lon}&lang=en"
