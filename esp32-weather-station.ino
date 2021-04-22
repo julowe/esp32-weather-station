@@ -1,4 +1,4 @@
-// use Board "ESP32 Dev Module" to build with Arduino IDE
+// uses ESP32 DevKit v1 board, and `DOIT ESP32 DEVKIT V1` package name from: https://dl.espressif.com/dl/package_esp32_index.json
 
 //#include <GxEPD2_BW.h>
 //#include <GxEPD2_3C.h>
@@ -12,7 +12,7 @@
 #include <Time.h>
 #include <WiFi.h>
 #include <HTTPClient.h>
-#include <Arduino_JSON.h>
+#include <Arduino_JSON.h> //QUESTION: any benefit to using ArduinoJson library here instead?
 
 
 JSONVar json;
@@ -69,7 +69,7 @@ void loop() {
       Weather weather;
       fillWeatherFromJson(&weather);
 //      displayWeather(&weather);
-      //only for debuggin, print to serial
+      //only for debugging, print to serial
       if (debugSerial) {
         displayWeatherDebug(&weather);
       }
@@ -78,11 +78,9 @@ void loop() {
     disconnectFromWifi();
   }
 
-  sleep(sleepTime);
-
-  Serial.println("After sleep, that line should never be printed");
-  
   if (! debug) {
+    sleep(sleepTime);
+    Serial.println("After sleep, that line should never be printed"); 
     delay(HOUR);
   } else {
     delay(MINUTE);
