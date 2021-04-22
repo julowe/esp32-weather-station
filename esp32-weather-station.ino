@@ -28,6 +28,8 @@ const uint64_t HOUR = 60 * MINUTE;
 const uint64_t MICRO_SEC_TO_MILLI_SEC_FACTOR = 1000;
 
 const bool debug = true;
+const bool debugSerial = true;
+
 void setup() {
   Serial.begin(115200);
   display.init(115200);
@@ -47,6 +49,9 @@ void loop() {
   
   if (!connectToWifi()) {
     displayError("Error : WIFI");
+      if (debugSerial) {
+        Serial.println("ERROR: Failed to join (or find?) WiFi");
+      }
   } else {
     unsigned int retries = 5;
     boolean jsonParsed = false;
@@ -56,10 +61,17 @@ void loop() {
     }
     if (!jsonParsed) {
       displayError("Error : JSON");
+      if (debugSerial) {
+        Serial.println("ERROR: Parsing JSON failed");
+      }
     } else {
       Weather weather;
       fillWeatherFromJson(&weather);
       displayWeather(&weather);
+      //only for debuggin, print to serial
+      if (debugSerial) {
+        displayWeatherDebug(&weather);
+      }
       if (weather.updated[0] == '0' && weather.updated[1] == '0') sleepTime = HOUR * 6; // sleep for the night
     }
     disconnectFromWifi();
@@ -84,6 +96,29 @@ void sleep(uint64_t sleepTime) {
     esp_deep_sleep_start();
   }
   delay(MINUTE);
+}
+
+void displayWeatherDebug(Weather* weather) {
+    Serial.print("Hourly Feels like: ");
+    Serial.println(weather->feelsLikeH1); //prints ⸮ instead of degree sign \b0
+    Serial.print("Hourly High Temp: ");
+    Serial.println(weather->tempH1);
+    Serial.print("Hourly Huidity: ");
+    Serial.println(weather->humidityH1);
+    Serial.print("Today Min Temp: ");
+    Serial.println(weather->tempMinD);
+    Serial.print("Today Max Temp: ");
+    Serial.println(weather->tempMaxD);
+    Serial.print("Today Humidity: ");
+    Serial.println(weather->humidityD);
+    Serial.print("Tomorrow Min Temp: ");
+    Serial.println(weather->tempMinD1);
+    Serial.print("Tomorrow Max Temp: ");
+    Serial.println(weather->tempMaxD1);
+    Serial.print("Tomorrow Humidity: ");
+    Serial.println(weather->humidityD1);
+    Serial.print("Updated at: ");
+    Serial.println(weather->updated);
 }
 
 void print_wakeup_reason(){
