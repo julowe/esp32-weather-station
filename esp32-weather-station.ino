@@ -68,7 +68,8 @@ void loop() {
       Weather weather;
       fillWeatherFromJson(&weather);
       displayWeather(&weather);
-      //only for debuggin, print to serial
+      
+      //only for debugging, print to serial
       if (debugSerial) {
         displayWeatherDebug(&weather);
       }
@@ -77,11 +78,9 @@ void loop() {
     disconnectFromWifi();
   }
 
-  sleep(sleepTime);
-
-  Serial.println("After sleep, that line should never be printed");
-  
   if (! debug) {
+    sleep(sleepTime); 
+    Serial.println("After sleep, that line should never be printed");
     delay(HOUR);
   } else {
     delay(MINUTE);
