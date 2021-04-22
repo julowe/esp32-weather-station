@@ -27,6 +27,7 @@ const uint64_t MINUTE = 60 * SECOND;
 const uint64_t HOUR = 60 * MINUTE;
 const uint64_t MICRO_SEC_TO_MILLI_SEC_FACTOR = 1000;
 
+const bool debug = true;
 void setup() {
   Serial.begin(115200);
   display.init(115200);
@@ -67,14 +68,21 @@ void loop() {
   sleep(sleepTime);
 
   Serial.println("After sleep, that line should never be printed");
-  delay(HOUR);
+  
+  if (! debug) {
+    delay(HOUR);
+  } else {
+    delay(MINUTE);
+  }
 }
 
 void sleep(uint64_t sleepTime) {
   Serial.flush();
-  display.powerOff();
-  esp_sleep_enable_timer_wakeup((uint64_t) sleepTime * MICRO_SEC_TO_MILLI_SEC_FACTOR);
-  esp_deep_sleep_start();
+  if (! debug) {
+    display.powerOff();
+    esp_sleep_enable_timer_wakeup((uint64_t) sleepTime * MICRO_SEC_TO_MILLI_SEC_FACTOR);
+    esp_deep_sleep_start();
+  }
   delay(MINUTE);
 }
 
