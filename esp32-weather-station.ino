@@ -3,7 +3,7 @@
 // 2021-04-25 jkl
 
 /* includes much code from: 
- *  HackerBox 0065 Clock Demo for 64x32 LED Array
+ *  HackerBox 0065 Clock Demo for 64x32 LED Array, https://www.instructables.com/HackerBox-0065-Realtime/
  *  Adapted from SmartMatrix example file
  *  in boolean RTC_DS1307::begin(void):
  *  Change Wire.begin() to Wire.begin(14, 13)
@@ -49,6 +49,7 @@ const uint64_t HOUR = 60 * MINUTE;
 const uint64_t MICRO_SEC_TO_MILLI_SEC_FACTOR = 1000;
 uint64_t sleepTime = MINUTE;
 
+Weather weather;
 
 //LED Matrix & RTC stuff
 #include "RTClib.h"
@@ -74,7 +75,7 @@ const int defaultBrightness = (35*255)/100;     // dim: 35% brightness
 //TODO use time lib instead of below?
 //char daysOfTheWeek[7][12] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
 char daysOfTheWeek[7][4] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
-char monthsOfTheYr[12][4] = {"JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JLY", "AUG", "SPT", "OCT", "NOV", "DEC"};
+char monthsOfTheYr[12][4] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
 
 
 //debug/admin stuff
@@ -157,8 +158,9 @@ void setup() {
   //Display Data
   if (dataWrapperSuccess) {
     //function to display data on led matrix TODO
-    displayWeather();
+    displayWeather(&weather);
   } else {
+    indexedLayer2.fillScreen(0);
     indexedLayer3.fillScreen(0);
   
     indexedLayer3.setFont(font3x5);
@@ -178,19 +180,24 @@ void loop() {
 
   DateTime now = rtc.now();
   
-  if (now.minute() % weatherUpdateInterval == 0){ // update every `weatherUpdateInterval` mins
-    Serial.print("Updating weather because it is a ");
-    Serial.print(weatherUpdateInterval);
-    Serial.print(" minute mark, time is: ");
-    Serial.print(now.hour());
-    Serial.print(":");
-    Serial.println(now.minute());
+  if (now.minute() % weatherUpdateInterval == 0){ // update every `weatherUpdateInterval`-th mins
+    if (debugSerial) {
+      Serial.print("Updating weather because it is a ");
+      Serial.print(weatherUpdateInterval);
+      Serial.print(" minute mark, time is: ");
+      Serial.print(now.hour());
+      Serial.print(":");
+      Serial.println(now.minute());
+    }
 
     dataWrapperSuccess = getDataWrapper();
     
-    if (debugSerial && !dataWrapperSuccess) {
+    if (debugSerial && dataWrapperSuccess) {
+      Serial.println("Succesfully got weather data");
+      displayWeatherDebug(&weather);
+    } else if (debugSerial && !dataWrapperSuccess) {
       Serial.println("ERROR: Did not retrieve weather data.");
-    }
+    }       
     //update later to incorporate weather and other data? or update each in turn?
   
   } else {
@@ -204,25 +211,43 @@ void loop() {
 
 
   if (1 == 2){ //check if time to update covid data
-//  if (now.hours() % covidUpdateInterval == 0 && now.minute() == 0){ // update every X hours
+//  if (now.hours() % covidUpdateInterval == 0 && now.minute() == 0){ // update every Xth hours
+    if (debugSerial) {
+      Serial.print("Updating covid data because it is a ");
+      Serial.print(covidUpdateInterval);
+      Serial.print(" hour mark, time is: ");
+      Serial.print(now.hour());
+      Serial.print(":");
+      Serial.println(now.minute());
+    }
     /*TODO
      * get json data
      * update covid data struct
      * print new data if in serial debug mode
      */
+  } else {
+    if (debugSerial) {
+      Serial.print("NOT updating covid data because it is NOT ");
+      Serial.print(covidUpdateInterval);
+      Serial.print(" hour mark, time is: ");
+      Serial.print(now.hour());
+      Serial.print(":");
+      Serial.println(now.minute());
+    }
   }
 
   //Display Data
   if (dataWrapperSuccess) {
     //function to display data on led matrix TODO
     //TODO make 'last updated' it's own layer
-    displayWeather();
+    displayWeather(&weather);
   } else {
     if (debugSerial) {
       Serial.println("Updating matrix with failure message");
     }
     //TODO display anything different here? or just leave old data up? update 'last updated' layer only?
     
+    indexedLayer2.fillScreen(0);
     indexedLayer3.fillScreen(0);
   
     indexedLayer3.setFont(font3x5);
@@ -275,8 +300,6 @@ void displayClock() {
 
   // clear screen before writing new text
   indexedLayer1.fillScreen(0);
-  indexedLayer2.fillScreen(0);
-  indexedLayer3.fillScreen(0);
 
   //drawString of all date data at once left large gaps (5?6? pixels), so I split up draw commands to only leave 2 pixel gaps
   indexedLayer1.setFont(font3x5);
@@ -306,25 +329,60 @@ void displayClock() {
 //  indexedLayer1.setFont(font3x5);
   indexedLayer1.drawString(35, 0, 1, txtBuffer);
   indexedLayer1.swapBuffers();
-  
-//  indexedLayer2.setFont(font8x13);
-//  indexedLayer2.setIndexedColor(1,{0x00, 0xff, 0x00});
-//  indexedLayer2.drawString(0, 11, 1, daysOfTheWeek[now.dayOfTheWeek()]);
-//  indexedLayer2.swapBuffers();
-  
 }
 
 
-void displayWeather() {
+void displayWeather(Weather* weather) {
+  /* Weather Display Ideas
+   *  
+   *  Humidity bar graph on right side?
+   *  
+   *  temp now, temp 1 hour out (or 2?), rain chance
+   *  
+   *  word weather description
+   */
+  char txtBuffer[20];
+  indexedLayer2.fillScreen(0);
   indexedLayer3.fillScreen(0);
-  //  sprintf(txtBuffer, "%02d %s %04d", now.day(), monthsOfTheYr[(now.month()-1)], now.year());
+  
+//  indexedLayer2.setFont(font8x13);
+  indexedLayer2.setFont(font5x7);
+  indexedLayer2.setIndexedColor(1,{0x00, 0xff, 0x00});
+  indexedLayer2.drawString(0, 6, 1, weather->descriptionC);
+  indexedLayer2.swapBuffers();
+
+  int pop1Temp = atof(weather->popH1)*100;
+//  sprintf(txtBuffer, "%s %s", weather->tempC, weather->tempH1);
+  sprintf(txtBuffer, "%s %s %i%%", weather->tempC, weather->tempH1, pop1Temp);
+//  sprintf(txtBuffer, "%s %s %3i%% %3i%%", weather->tempC, weather->tempH1, atof(weather->popH1)*100, atof(weather->popH4)*100);
   indexedLayer3.setFont(font5x7);
   indexedLayer3.setIndexedColor(1,{0xff, 0x00, 0x00});
-  indexedLayer3.drawString(0, 25, 1, "weather..");
+  indexedLayer3.drawString(0, 14, 1, txtBuffer);
   indexedLayer3.swapBuffers();
 }
 
+
 void displayWeatherDebug(Weather* weather) {
+
+    Serial.print("descriptionC: ");
+    Serial.println(weather->descriptionC);
+    Serial.print("descriptionShortC: ");
+    Serial.println(weather->descriptionShortC);
+    Serial.print("sunset: ");
+    Serial.println(weather->sunset);
+    Serial.print("tempC: ");
+    Serial.println(weather->tempC);
+    Serial.print("pressureC: ");
+    Serial.println(weather->pressureC);
+    Serial.print("humidityC: ");
+    Serial.println(weather->humidityC);
+    Serial.print("windSpeedC: ");
+    Serial.println(weather->windSpeedC);
+    Serial.print("windDirectionC: ");
+    Serial.println(weather->windDirectionC);
+    Serial.print("windGustC: ");
+    Serial.println(weather->windGustC);
+  
     Serial.print("Hourly Feels like: ");
     Serial.println(weather->feelsLikeH1); //prints ⸮ instead of degree sign \b0
     Serial.print("Hourly High Temp: ");
