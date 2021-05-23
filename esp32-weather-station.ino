@@ -1,25 +1,47 @@
+// Display things on a Hub75 display with ESP32
 // uses ESP32 DevKit v1 board, and `DOIT ESP32 DEVKIT V1` package name from: https://dl.espressif.com/dl/package_esp32_index.json
+// 2021-04-25 jkl
+
+/* includes much code from: 
+ *  HackerBox 0065 Clock Demo for 64x32 LED Array
+ *  Adapted from SmartMatrix example file
+ *  in boolean RTC_DS1307::begin(void):
+ *  Change Wire.begin() to Wire.begin(14, 13)
+*/
+
+/*
+ * forked from: 
+ * https://github.com/paulgreg/esp32-weather-station
+*/
 
 //TODO
 //TODO add Hourly+1 ?
 //todo add air pollution, pm2.5 (or10?) for smoke season https://openweathermap.org/api/air-pollution
-//todo add covid (see parameters.h)
+//todo add covid data (see parameters.h)
 //todo add rain chance - `pop` field (probability of precipitation)
 //todo use NTP?
+//TODO better differentiate get or parse data failures? But not sure if I would do anything different with different failures...
+//TODO save data to SD card?
+//TODO sleep during display intervals? or keep arduino on?
 
+/* TODO Fix out of memory httpclient.getstring() error. Or just keep letting it retrieve it twice?
+ *  [D][HTTPClient.cpp:947] getString(): not enough memory to reserve a string! need: 17987
+ *  Parsing input failed!
+ *  [D][HTTPClient.cpp:378] disconnect(): still data in buffer (5368), clean up.
+*/
+
+   
 //Data retrieval stuff
 #include <Time.h>
 #include <WiFi.h>
 #include <HTTPClient.h>
 #include <Arduino_JSON.h> //QUESTION: any benefit to using ArduinoJson library here instead?
-JSONVar json;
+JSONVar jsonWeather;
 
 #include "parameters.h"
 #include "weather.h"
-//#include "display.h" //todo - use weather icons
+//#include "display.h" //todo - use weather icons from this file
 #include "network.h"
-
-
 
 const uint64_t SECOND = 1000;
 const uint64_t MINUTE = 60 * SECOND;
@@ -27,7 +49,8 @@ const uint64_t HOUR = 60 * MINUTE;
 const uint64_t MICRO_SEC_TO_MILLI_SEC_FACTOR = 1000;
 uint64_t sleepTime = MINUTE;
 
-//Display stuff
+
+//LED Matrix & RTC stuff
 #include "RTClib.h"
 #include <MatrixHardware_ESP32_V0.h>
 #include <SmartMatrix.h>
@@ -49,12 +72,18 @@ SMARTMATRIX_ALLOCATE_INDEXED_LAYER(indexedLayer3, kMatrixWidth, kMatrixHeight, C
 RTC_DS1307 rtc;
 const int defaultBrightness = (35*255)/100;     // dim: 35% brightness
 //TODO use time lib instead of below?
-char daysOfTheWeek[7][12] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
+//char daysOfTheWeek[7][12] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
+char daysOfTheWeek[7][4] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
 char monthsOfTheYr[12][4] = {"JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JLY", "AUG", "SPT", "OCT", "NOV", "DEC"};
+
 
 //debug/admin stuff
 const bool debug = true;
 const bool debugSerial = true;
+//bool dataSuccess = false;
+boolean getDataWrapper(int connectWifiTries = 5, int getDataTries = 5);
+const int connectWifiDelay = 5000; //5 seconds for now
+const int getDataDelay = 2000; //2 seconds for now
 //const int weatherUpdateInterval = 15;
 const int weatherUpdateInterval = 5; //used as minutes
 const int covidUpdateInterval = 4; //used as hours
@@ -76,20 +105,7 @@ void setup() {
     Serial.println(sleepTime);
   }
 
-
-  //todo remove below, orig eink code
-//  display.init(115200);
-  // *** special handling for Waveshare ESP32 Driver board *** //
-//  SPI.end(); // release standard SPI pins, e.g. SCK(18), MISO(19), MOSI(23), SS(5)
-  //SPI: void begin(int8_t sck=-1, int8_t miso=-1, int8_t mosi=-1, int8_t ss=-1);
-//  SPI.begin(13, 12, 14, 15); // map and init SPI pins SCK(13), MISO(12), MOSI(14), SS(15)
-  // *** end of special handling for Waveshare ESP32 Driver board *** //
-// /remove
-
   print_wakeup_reason();
-
-//  display.setRotation(1);
-
 
   Serial.println("DS1307RTC Test");
   if (! rtc.begin()) {
@@ -113,30 +129,47 @@ void setup() {
   matrix.addLayer(&indexedLayer2);
   matrix.addLayer(&indexedLayer3);
   matrix.begin();
-
+  
   matrix.setBrightness(defaultBrightness);
+
+  indexedLayer1.fillScreen(0);
+  
+  indexedLayer1.setFont(font3x5);
+  indexedLayer1.setIndexedColor(1,{0x00, 0x00, 0xff});
+  indexedLayer1.drawString(0, 0, 1, "Initializing");
+  indexedLayer1.swapBuffers();
+
+
+  //get data at startup
+  bool dataWrapperSuccess = getDataWrapper(5,2); //try connecting to wifi 5 times, getting data twice
+
+//  disconnectFromWifi(); //TODO do we want to explicitly disconnect from wifi between updates? chip heat savings?
+
+  //Display Data
+  if (dataWrapperSuccess) {
+    //function to display data on led matrix TODO
+  } else {
+    indexedLayer1.fillScreen(0);
+  
+    indexedLayer1.setFont(font3x5);
+    indexedLayer1.setIndexedColor(1,{0x00, 0x00, 0xff});
+    indexedLayer1.drawString(0, 0, 1, "Failed to Initialize");
+    indexedLayer1.swapBuffers();
+  }
+  
 }
 
 void loop() {
+  bool dataWrapperSuccess = false;
   if (debugSerial) {
     Serial.println("---- Starting loop() ----");
   }
 
-  /*TODO
-   * update time on display every minute,
-   * check weather every 15(?) minutes,
-   * check covid every 4(?) hours
-   *
-   * disconnect wifi between weather check intervals? or keep on?
-   *
-   * sleep during display intervals? or keep on?
-   */
-
 
   DateTime now = rtc.now();
 
-  if (now.minute() % weatherUpdateInterval == 0){ // update every  mins
-//  if (1 == 1) {
+//  if (now.minute() % weatherUpdateInterval == 0){ // update every  mins
+  if (1 == 1) {
     Serial.print("Updating weather because it is a ");
     Serial.print(weatherUpdateInterval);
     Serial.print(" minute mark, time is: ");
@@ -144,51 +177,8 @@ void loop() {
     Serial.print(":");
     Serial.println(now.minute());
 
-    //TODO add checkWifi function to network.h
-    //QUESTION connect once & check, or always connect and then disconnect as done now?
-    if (!connectToWifi()) {
-  //    displayError("Error : WIFI");
-        if (debugSerial) {
-          Serial.println("ERROR: Failed to join (or find?) WiFi");
-        }
-    } else {
-      unsigned int retries = 5;
-      boolean jsonParsed = false;
-
-      while(!jsonParsed && (retries-- > 0)) {
-        delay(1000);
-        jsonParsed = getJSON(URL);
-
-        /* TODO, maybe, fix error:
-         *  [D][HTTPClient.cpp:947] getString(): not enough memory to reserve a string! need: 17926
-         *  Parsing input failed!
-         *  [D][HTTPClient.cpp:378] disconnect(): still data in buffer (5368), clean up.
-         */
-      }
-
-      if (!jsonParsed) {
-  //      displayError("Error : JSON");
-        if (debugSerial) {
-          Serial.println("ERROR: Parsing JSON weather date failed");
-        }
-      } else {
-        Weather weather;
-        fillWeatherFromJson(&weather); //weather.h
-  //      displayWeather(&weather); //display.h
-
-        //only for debugging, print to serial
-        if (debugSerial) {
-          displayWeatherDebug(&weather);
-
-          Serial.print("Hourly PoP: ");
-          Serial.println(json["hourly"][1]["pop"]);
-        }
-
-        //if (weather.updated[0] == '0' && weather.updated[1] == '0') sleepTime = HOUR * 6; // sleep for the night
-      }
-
-      disconnectFromWifi(); //QUESTION: If on wall power do we even want to disconnect? or sleep at all? sleep for heat?
-    }
+    dataWrapperSuccess = getDataWrapper();
+  
   } else {
     if (debugSerial) {
       Serial.print("NOT updating weather because it is NOT ");
@@ -202,11 +192,25 @@ void loop() {
   if (1 == 2){ //check if time to update covid data
 //  if (now.hours() % covidUpdateInterval == 0 && now.minute() == 0){ // update every X hours
     /*TODO
-     * check wifi, connect if not
      * get json data
      * update covid data struct
      * print new data if in serial debug mode
      */
+  }
+
+  //Display Data
+  if (dataWrapperSuccess) {
+    //function to display data on led matrix TODO
+    //TODO make 'last updated' it's own layer
+  } else {
+    //TODO display anything differnt here? or just leave old data up? update 'last updated' layer only?
+    
+//      indexedLayer1.fillScreen(0);
+//    
+//      indexedLayer1.setFont(font3x5);
+//      indexedLayer1.setIndexedColor(1,{0x00, 0x00, 0xff});
+//      indexedLayer1.drawString(0, 0, 1, "Failed to Initialize");
+//      indexedLayer1.swapBuffers();
   }
 
   //TODO update display with actual data
@@ -222,10 +226,12 @@ void loop() {
   indexedLayer1.setIndexedColor(1,{0x00, 0x00, 0xff});
   indexedLayer1.drawString(0, 0, 1, txtBuffer);
   indexedLayer1.swapBuffers();
+  
   indexedLayer2.setFont(font8x13);
   indexedLayer2.setIndexedColor(1,{0x00, 0xff, 0x00});
   indexedLayer2.drawString(0, 11, 1, daysOfTheWeek[now.dayOfTheWeek()]);
   indexedLayer2.swapBuffers();
+  
   sprintf(txtBuffer, "%02d %s %04d", now.day(), monthsOfTheYr[(now.month()-1)], now.year());
   indexedLayer3.setFont(font5x7);
   indexedLayer3.setIndexedColor(1,{0xff, 0x00, 0x00});
@@ -238,11 +244,23 @@ void loop() {
     Serial.println("After sleep, that line should never be printed"); //"this" line?
     delay(sleepTime);
   } else {
+    if (debugSerial) {
+      Serial.print("Debug: Sleeping for ");
+      Serial.print(MINUTE/1000);
+      Serial.println(" seconds.");
+    }
     delay(MINUTE);
   }
 }
 
+
 void sleep(uint64_t sleepTime) {
+  if (debugSerial) {
+    Serial.print("Sleeping for ");
+    Serial.print(sleepTime/1000);
+    Serial.println(" seconds.");
+  }
+  
   Serial.flush();
   if (! debug) {
     //display.powerOff();
@@ -253,13 +271,18 @@ void sleep(uint64_t sleepTime) {
   delay(sleepTime/60);
 }
 
+
 void displayWeatherDebug(Weather* weather) {
     Serial.print("Hourly Feels like: ");
     Serial.println(weather->feelsLikeH1); //prints ⸮ instead of degree sign \b0
     Serial.print("Hourly High Temp: ");
     Serial.println(weather->tempH1);
-    Serial.print("Hourly Huidity: ");
+    Serial.print("Hourly Humidity: ");
     Serial.println(weather->humidityH1);
+    Serial.print("Hourly PoP: ");
+    Serial.println(weather->popH1);
+    Serial.print("Hourly PoP4: ");
+    Serial.println(weather->popH4);
     Serial.print("Today Min Temp: ");
     Serial.println(weather->tempMinD);
     Serial.print("Today Max Temp: ");
@@ -275,6 +298,7 @@ void displayWeatherDebug(Weather* weather) {
     Serial.print("Updated at: ");
     Serial.println(weather->updated);
 }
+
 
 void print_wakeup_reason(){
   esp_sleep_wakeup_cause_t wakeup_reason;
@@ -293,4 +317,70 @@ void print_wakeup_reason(){
     case 5  : Serial.println("Wakeup caused by ULP program"); break;
     default : Serial.println("Wakeup was not caused by deep sleep"); break;
   }
+}
+
+
+boolean getDataWrapper(int connectWifiTries, int getDataTries) {
+  bool dataSuccess = false;
+  int connectWifiTrialNumber = 1;
+  int getDataTrialNumber = 1;
+  if (debugSerial) {
+    Serial.println("---- Starting getDataWrapper() ----");
+    Serial.print("dataSuccess = ");
+    Serial.println(dataSuccess);
+  }
+
+  while (connectWifiTrialNumber <= connectWifiTries && WiFi.status() != WL_CONNECTED) {
+    Serial.print("Attempt #");
+    Serial.print(connectWifiTrialNumber);
+    Serial.print("/");
+    Serial.print(connectWifiTries);
+    Serial.print(" for ");
+    Serial.println("connecting to wifi...");
+    
+    connectToWifi();
+    connectWifiTrialNumber++;
+    delay(connectWifiDelay);
+  }
+
+  while (getDataTrialNumber <= getDataTries && !dataSuccess) {
+    Serial.print("Attempt #");
+    Serial.print(getDataTrialNumber);
+    Serial.print("/");
+    Serial.print(getDataTries);
+    Serial.print(" for ");
+    
+    Serial.println("retrieving data...");
+    
+    //connect to wifi
+    if (WiFi.status() == WL_CONNECTED) {
+      //get data
+      dataSuccess = getJSON(URL);
+      if (dataSuccess) {
+        //TODO right now this is weather data specific. create new function for each data call, or make this one do all?
+        Weather weather;
+        fillWeatherFromJson(&weather); //weather.h
+
+        //only for debugging, print to serial
+        if (debugSerial) {
+          Serial.println("Succesfully got that data");
+          displayWeatherDebug(&weather);
+        }
+      } else {
+        if (debugSerial) {
+          Serial.println("ERROR: Did not got that data");
+        }
+      } //endif dataSuccess
+
+    } else {    
+      if (debugSerial) {
+        Serial.println("ERROR: Not connected to wifi, attempting to reconnect");
+      }
+      connectToWifi();
+    } //endif wifi connected
+    getDataTrialNumber++;
+    delay(getDataDelay);
+  } //end while
+
+  return dataSuccess;
 }
