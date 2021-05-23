@@ -183,7 +183,12 @@ void loop() {
     Serial.print(":");
     Serial.println(now.minute());
 
-    dataWrapperSuccess = getDataWrapper(1,1);
+    if (debug) {
+      dataWrapperSuccess = getDataWrapper(1,1); //only 1 get data attempt will likely always fail
+    } else {
+      dataWrapperSuccess = getDataWrapper();
+    }
+    
     if (debugSerial && !dataWrapperSuccess) {
       Serial.println("ERROR: Did not retrieve weather data.");
     }
