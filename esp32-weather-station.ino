@@ -81,12 +81,19 @@ char monthsOfTheYr[12][4] = {"JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JLY", "A
 const bool debug = true;
 const bool debugSerial = true;
 //bool dataSuccess = false;
-boolean getDataWrapper(int connectWifiTries = 5, int getDataTries = 5);
+
+#if debug
+  boolean getDataWrapper(int connectWifiTries = 5, int getDataTries = 5);
+  const int weatherUpdateInterval = 15; //used as minutes
+  const int covidUpdateInterval = 4; //used as hours
+#else
+  boolean getDataWrapper(int connectWifiTries = 1, int getDataTries = 1);
+  const int weatherUpdateInterval = 1; //used as minutes
+  const int covidUpdateInterval = 4; //used as hours
+#endif
+  
 const int connectWifiDelay = 5000; //5 seconds for now
 const int getDataDelay = 2000; //2 seconds for now
-//const int weatherUpdateInterval = 15;
-int weatherUpdateInterval = 5; //used as minutes
-int covidUpdateInterval = 4; //used as hours
 
 
 void setup() {
@@ -170,10 +177,6 @@ void loop() {
 
 
   DateTime now = rtc.now();
-
-  if (debug) {
-    weatherUpdateInterval = 1;
-  }
   
   if (now.minute() % weatherUpdateInterval == 0){ // update every `weatherUpdateInterval` mins
     Serial.print("Updating weather because it is a ");
@@ -183,11 +186,7 @@ void loop() {
     Serial.print(":");
     Serial.println(now.minute());
 
-    if (debug) {
-      dataWrapperSuccess = getDataWrapper(1,1); //only 1 get data attempt will likely always fail
-    } else {
-      dataWrapperSuccess = getDataWrapper();
-    }
+    dataWrapperSuccess = getDataWrapper();
     
     if (debugSerial && !dataWrapperSuccess) {
       Serial.println("ERROR: Did not retrieve weather data.");
