@@ -40,7 +40,7 @@ JSONVar jsonWeather;
 
 #include "parameters.h"
 #include "weather.h"
-//#include "display.h" //todo - use weather icons from this file
+//#include "display.h" //TODO - use weather icons from this file
 #include "network.h"
 
 const uint64_t SECOND = 1000;
@@ -85,8 +85,8 @@ boolean getDataWrapper(int connectWifiTries = 5, int getDataTries = 5);
 const int connectWifiDelay = 5000; //5 seconds for now
 const int getDataDelay = 2000; //2 seconds for now
 //const int weatherUpdateInterval = 15;
-const int weatherUpdateInterval = 5; //used as minutes
-const int covidUpdateInterval = 4; //used as hours
+int weatherUpdateInterval = 5; //used as minutes
+int covidUpdateInterval = 4; //used as hours
 
 
 void setup() {
@@ -132,12 +132,14 @@ void setup() {
   
   matrix.setBrightness(defaultBrightness);
 
-  indexedLayer1.fillScreen(0);
+  displayClock();
+
+  indexedLayer3.fillScreen(0);
   
-  indexedLayer1.setFont(font3x5);
-  indexedLayer1.setIndexedColor(1,{0x00, 0x00, 0xff});
-  indexedLayer1.drawString(0, 0, 1, "Initializing");
-  indexedLayer1.swapBuffers();
+  indexedLayer3.setFont(font3x5);
+  indexedLayer3.setIndexedColor(1,{0x00, 0x00, 0xff});
+  indexedLayer3.drawString(0, 25, 1, "Initializing");
+  indexedLayer3.swapBuffers();
 
 
   //get data at startup
@@ -148,13 +150,14 @@ void setup() {
   //Display Data
   if (dataWrapperSuccess) {
     //function to display data on led matrix TODO
+    displayWeather();
   } else {
-    indexedLayer1.fillScreen(0);
+    indexedLayer3.fillScreen(0);
   
-    indexedLayer1.setFont(font3x5);
-    indexedLayer1.setIndexedColor(1,{0x00, 0x00, 0xff});
-    indexedLayer1.drawString(0, 0, 1, "Failed to Initialize");
-    indexedLayer1.swapBuffers();
+    indexedLayer3.setFont(font3x5);
+    indexedLayer3.setIndexedColor(1,{0xff, 0x00, 0x00});
+    indexedLayer3.drawString(0, 25, 1, "Failed to Initialize");
+    indexedLayer3.swapBuffers();
   }
   
 }
@@ -168,8 +171,11 @@ void loop() {
 
   DateTime now = rtc.now();
 
-//  if (now.minute() % weatherUpdateInterval == 0){ // update every  mins
-  if (1 == 1) {
+  if (debug) {
+    weatherUpdateInterval = 1;
+  }
+  
+  if (now.minute() % weatherUpdateInterval == 0){ // update every `weatherUpdateInterval` mins
     Serial.print("Updating weather because it is a ");
     Serial.print(weatherUpdateInterval);
     Serial.print(" minute mark, time is: ");
@@ -177,7 +183,11 @@ void loop() {
     Serial.print(":");
     Serial.println(now.minute());
 
-    dataWrapperSuccess = getDataWrapper();
+    dataWrapperSuccess = getDataWrapper(1,1);
+    if (debugSerial && !dataWrapperSuccess) {
+      Serial.println("ERROR: Did not retrieve weather data.");
+    }
+    //update later to incorporate weather and other data? or update each in turn?
   
   } else {
     if (debugSerial) {
@@ -202,41 +212,23 @@ void loop() {
   if (dataWrapperSuccess) {
     //function to display data on led matrix TODO
     //TODO make 'last updated' it's own layer
+    displayWeather();
   } else {
-    //TODO display anything differnt here? or just leave old data up? update 'last updated' layer only?
+    if (debugSerial) {
+      Serial.println("Updating matrix with failure message");
+    }
+    //TODO display anything different here? or just leave old data up? update 'last updated' layer only?
     
-//      indexedLayer1.fillScreen(0);
-//    
-//      indexedLayer1.setFont(font3x5);
-//      indexedLayer1.setIndexedColor(1,{0x00, 0x00, 0xff});
-//      indexedLayer1.drawString(0, 0, 1, "Failed to Initialize");
-//      indexedLayer1.swapBuffers();
+    indexedLayer3.fillScreen(0);
+  
+    indexedLayer3.setFont(font3x5);
+    indexedLayer3.setIndexedColor(1,{0xff, 0x00, 0x00});
+    indexedLayer3.drawString(0, 25, 1, "Failed to Update");
+    indexedLayer3.swapBuffers();
   }
 
-  //TODO update display with actual data
-  char txtBuffer[12];
-
-  // clear screen before writing new text
-  indexedLayer1.fillScreen(0);
-  indexedLayer2.fillScreen(0);
-  indexedLayer3.fillScreen(0);
-
-  sprintf(txtBuffer, "%02d:%02d", now.hour(), now.minute());
-  indexedLayer1.setFont(font3x5);
-  indexedLayer1.setIndexedColor(1,{0x00, 0x00, 0xff});
-  indexedLayer1.drawString(0, 0, 1, txtBuffer);
-  indexedLayer1.swapBuffers();
-  
-  indexedLayer2.setFont(font8x13);
-  indexedLayer2.setIndexedColor(1,{0x00, 0xff, 0x00});
-  indexedLayer2.drawString(0, 11, 1, daysOfTheWeek[now.dayOfTheWeek()]);
-  indexedLayer2.swapBuffers();
-  
-  sprintf(txtBuffer, "%02d %s %04d", now.day(), monthsOfTheYr[(now.month()-1)], now.year());
-  indexedLayer3.setFont(font5x7);
-  indexedLayer3.setIndexedColor(1,{0xff, 0x00, 0x00});
-  indexedLayer3.drawString(0, 25, 1, txtBuffer);
-  indexedLayer3.swapBuffers();
+//////////////////////////////////////////////
+  displayClock();
 
   //delay updates/actions
   if (! debug) {
@@ -271,6 +263,62 @@ void sleep(uint64_t sleepTime) {
   delay(sleepTime/60);
 }
 
+void displayClock() {
+  DateTime now = rtc.now();
+  
+  //TODO update display with actual data
+  char txtBuffer[20];
+
+  // clear screen before writing new text
+  indexedLayer1.fillScreen(0);
+  indexedLayer2.fillScreen(0);
+  indexedLayer3.fillScreen(0);
+
+  //drawString of all date data at once left large gaps (5?6? pixels), so I split up draw commands to only leave 2 pixel gaps
+  indexedLayer1.setFont(font3x5);
+  indexedLayer1.setIndexedColor(1,{0x00, 0x00, 0xff});
+//  indexedLayer1.setIndexedColor(2,{0xff, 0x00, 0x00});
+  
+  //Weekday
+//  sprintf(txtBuffer, "%s %02d %s %02d:%02d", daysOfTheWeek[now.dayOfTheWeek()], now.day(), monthsOfTheYr[(now.month()-1)], now.hour(), now.minute());
+  sprintf(txtBuffer, "%s", daysOfTheWeek[now.dayOfTheWeek()]);
+  indexedLayer1.drawString(0, 0, 1, txtBuffer);
+  indexedLayer1.swapBuffers();
+
+  //Day date
+  sprintf(txtBuffer, "%02d", now.day());
+//  indexedLayer1.setFont(font3x5);
+  indexedLayer1.drawString(13, 0, 1, txtBuffer);
+  indexedLayer1.swapBuffers();
+
+  //month
+  sprintf(txtBuffer, "%s", monthsOfTheYr[(now.month()-1)]);
+//  indexedLayer1.setFont(font3x5);
+  indexedLayer1.drawString(22, 0, 1, txtBuffer);
+  indexedLayer1.swapBuffers();
+
+  //time
+  sprintf(txtBuffer, "%02d:%02d", now.hour(), now.minute());
+//  indexedLayer1.setFont(font3x5);
+  indexedLayer1.drawString(35, 0, 1, txtBuffer);
+  indexedLayer1.swapBuffers();
+  
+//  indexedLayer2.setFont(font8x13);
+//  indexedLayer2.setIndexedColor(1,{0x00, 0xff, 0x00});
+//  indexedLayer2.drawString(0, 11, 1, daysOfTheWeek[now.dayOfTheWeek()]);
+//  indexedLayer2.swapBuffers();
+  
+}
+
+
+void displayWeather() {
+  indexedLayer3.fillScreen(0);
+  //  sprintf(txtBuffer, "%02d %s %04d", now.day(), monthsOfTheYr[(now.month()-1)], now.year());
+  indexedLayer3.setFont(font5x7);
+  indexedLayer3.setIndexedColor(1,{0xff, 0x00, 0x00});
+  indexedLayer3.drawString(0, 25, 1, "weather..");
+  indexedLayer3.swapBuffers();
+}
 
 void displayWeatherDebug(Weather* weather) {
     Serial.print("Hourly Feels like: ");
