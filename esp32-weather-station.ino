@@ -84,11 +84,12 @@ const bool debugSerial = true;
 //bool dataSuccess = false;
 
 #if debug
-  boolean getDataWrapper(int connectWifiTries = 5, int getDataTries = 5);
+  boolean getDataWrapper(char data_source = 'weather', int connectWifiTries = 5, int getDataTries = 5);
   const int weatherUpdateInterval = 15; //used as minutes
   const int covidUpdateInterval = 4; //used as hours
 #else
-  boolean getDataWrapper(int connectWifiTries = 1, int getDataTries = 1);
+  //only 1 get data attempt will likely always fail, so every other loop() cycle will fail because of httpclient.getstring() memory error
+  boolean getDataWrapper(char data_source = 'weather', int connectWifiTries = 1, int getDataTries = 1); 
   const int weatherUpdateInterval = 1; //used as minutes
   const int covidUpdateInterval = 4; //used as hours
 #endif
@@ -151,7 +152,7 @@ void setup() {
 
 
   //get data at startup
-  bool dataWrapperSuccess = getDataWrapper(5,2); //try connecting to wifi 5 times, getting data twice
+  bool dataWrapperSuccess = getDataWrapper('weather', 5,2); //try connecting to wifi 5 times, getting data twice
 
 //  disconnectFromWifi(); //TODO do we want to explicitly disconnect from wifi between updates? chip heat savings?
 
@@ -430,7 +431,7 @@ void print_wakeup_reason(){
 }
 
 
-boolean getDataWrapper(int connectWifiTries, int getDataTries) {
+boolean getDataWrapper(char data_source, int connectWifiTries, int getDataTries) {
   bool dataSuccess = false;
   int connectWifiTrialNumber = 1;
   int getDataTrialNumber = 1;
@@ -464,21 +465,38 @@ boolean getDataWrapper(int connectWifiTries, int getDataTries) {
     
     //connect to wifi
     if (WiFi.status() == WL_CONNECTED) {
-      //get data
-      dataSuccess = getJSON(URL);
-      if (dataSuccess) {
-        //TODO right now this is weather data specific. create new function for each data call, or make this one do all?
-        Weather weather;
-        fillWeatherFromJson(&weather); //weather.h
 
-        //only for debugging, print to serial
-        if (debugSerial) {
-          Serial.println("Succesfully got that data");
-          displayWeatherDebug(&weather);
+      switch (data_source) {
+        case 'weather':
+          dataSuccess = getJSON(URL);
+        case 'pollution':
+          dataSuccess = getJSON(URL_pollution);
+        case 'covid':
+          Serial.println("Covid data retrieval not yet implemented.");
+//          dataSuccess = getJSON(URL_covid_base);
+        default:
+          dataSuccess = getJSON(URL);
+      }
+      
+      if (dataSuccess) {
+        switch (data_source) {
+          case 'weather':
+            fillWeatherFromJson(&weather); //weather.h
+          case 'pollution':
+            Serial.println("Pollution data storage not yet implemented.");
+//            fillPollutionFromJson(&pollution_data); //weather.h
+          case 'covid':
+            Serial.println("Covid data storage not yet implemented.");
+//            fillCovidDataFromJson(&covid_data); //weather.h
+          default:
+            fillWeatherFromJson(&weather); //weather.h
         }
+        
       } else {
         if (debugSerial) {
-          Serial.println("ERROR: Did not got that data");
+          Serial.print("ERROR: Did not get ");
+          Serial.print(String(data_source));
+          Serial.println(" data");
         }
       } //endif dataSuccess
 
