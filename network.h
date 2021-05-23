@@ -54,6 +54,10 @@ boolean getJSON(const char* url) {
 //    Serial.print("HTTP code : "); //ok this isn't printing and I don't want to debug. moved to below error printing, which does work
 //    Serial.println(httpCode);
     if (httpCode > 0) {
+
+//      TODO [D][HTTPClient.cpp:1260] handleHeaderResponse(): size: 18612
+//      myString.reserve(size);
+
       jsonWeather = JSON.parse(http.getString());
       
       if (JSON.typeof(jsonWeather) == "undefined") { 
