@@ -51,13 +51,15 @@ boolean getJSON(const char* url) {
     HTTPClient http;
     http.begin(url);
     int httpCode = http.GET();
-     Serial.print("HTTP code : ");
-     Serial.println(httpCode);
+//    Serial.print("HTTP code : "); //ok this isn't printing and I don't want to debug. moved to below error printing, which does work
+//    Serial.println(httpCode);
     if (httpCode > 0) {
       jsonWeather = JSON.parse(http.getString());
       
       if (JSON.typeof(jsonWeather) == "undefined") { 
-        Serial.println("Parsing input failed!");
+        //TODO improve error reporting
+        Serial.print("Parsing input failed! HTTP code : ");
+        Serial.println(httpCode);
       } else {
         success = true;
       }
