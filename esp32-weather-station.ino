@@ -15,14 +15,13 @@
 */
 
 //TODO
-//TODO add Hourly+1 ?
 //todo add air pollution, pm2.5 (or10?) for smoke season https://openweathermap.org/api/air-pollution
 //todo add covid data (see parameters.h)
-//todo add rain chance - `pop` field (probability of precipitation)
 //todo use NTP?
 //TODO better differentiate get or parse data failures? But not sure if I would do anything different with different failures...
 //TODO save data to SD card?
 //TODO sleep during display intervals? or keep arduino on?
+//TODO move led display code to display-led.h
 
 /* TODO Fix out of memory httpclient.getstring() error. Or just keep letting it retrieve it twice?
  *  [D][HTTPClient.cpp:947] getString(): not enough memory to reserve a string! need: 17987
@@ -49,7 +48,8 @@ const uint64_t HOUR = 60 * MINUTE;
 const uint64_t MICRO_SEC_TO_MILLI_SEC_FACTOR = 1000;
 uint64_t sleepTime = MINUTE;
 
-Weather weather;
+//declare struct for weather data to be put in
+Weather weather_data;
 
 //LED Matrix & RTC stuff
 #include "RTClib.h"
@@ -82,11 +82,12 @@ char monthsOfTheYr[12][4] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "A
 const bool debug = true;
 const bool debugSerial = true;
 
+//TODO fix this/make it work another way
 //#if debug == 1
 
   //only 1 get data attempt will likely always fail, so every other loop() cycle will fail because of httpclient.getstring() memory error
   boolean getDataWrapper(String data_source = "weather", int connectWifiTries = 1, int getDataTries = 1); 
-  const int weatherUpdateInterval = 1; //used as ds
+  const int weatherUpdateInterval = 1; //used as minutes
   const int covidUpdateInterval = 1; //used as hours
   
 //#else
@@ -155,14 +156,14 @@ void setup() {
 
 
   //get data at startup
-  bool dataWrapperSuccess = getDataWrapper("weather", 5,2); //try connecting to wifi 5 times, getting data twice
+  bool dataWrapperSuccess = getDataWrapper("weather", 5, 2); //try connecting to wifi 5 times, getting data twice
 
 //  disconnectFromWifi(); //TODO do we want to explicitly disconnect from wifi between updates? chip heat savings?
 
   //Display Data
   if (dataWrapperSuccess) {
     //function to display data on led matrix TODO
-    displayWeather(&weather);
+    displayWeather(&weather_data);
   } else {
     indexedLayer2.fillScreen(0);
     indexedLayer3.fillScreen(0);
@@ -199,7 +200,7 @@ void loop() {
     
     if (debugSerial && dataWrapperSuccess) {
       Serial.println("Succesfully got weather data");
-      displayWeatherDebug(&weather);
+      printWeatherDebug(&weather_data);
     } else if (debugSerial && !dataWrapperSuccess) {
       Serial.println("ERROR: Did not retrieve weather data.");
     }       
@@ -207,7 +208,7 @@ void loop() {
     //Display Data
     if (dataWrapperSuccess) {
       //TODO make 'last updated' it's own layer
-      displayWeather(&weather);
+      displayWeather(&weather_data);
     } else {
       if (debugSerial) {
         Serial.println("Updating matrix with failure message");
@@ -256,7 +257,7 @@ void loop() {
     
     if (debugSerial && dataWrapperSuccess) {
       Serial.println("Succesfully got covid data");
-//      displayWeatherDebug(&weather); //TODO make covid data display debug?
+//      printWeatherDebug(&weather_data); //TODO make covid data display debug?
     } else if (debugSerial && !dataWrapperSuccess) {
       Serial.println("ERROR: Did not retrieve covid data.");
     }       
@@ -264,7 +265,7 @@ void loop() {
     //Display Data
     if (dataWrapperSuccess) {
       //TODO make 'last updated' it's own layer
-//      displayWeather(&weather); //TODO make covid data display function
+//      displayWeather(&weather_data); //TODO make covid data display function
     } else {
       if (debugSerial) {
 //        Serial.println("Updating matrix with failure message");
@@ -371,7 +372,7 @@ void displayClock() {
 }
 
 
-void displayWeather(Weather* weather) {
+void displayWeather(Weather* weather_data) {
   /* Weather Display Ideas
    *  
    *  Humidity bar graph on right side?
@@ -387,65 +388,17 @@ void displayWeather(Weather* weather) {
 //  indexedLayer2.setFont(font8x13);
   indexedLayer2.setFont(font5x7);
   indexedLayer2.setIndexedColor(1,{0x00, 0xff, 0x00});
-  indexedLayer2.drawString(0, 6, 1, weather->descriptionC);
+  indexedLayer2.drawString(0, 6, 1, weather_data->descriptionC);
   indexedLayer2.swapBuffers();
 
-  int pop1Temp = atof(weather->popH1)*100;
-//  sprintf(txtBuffer, "%s %s", weather->tempC, weather->tempH1);
-  sprintf(txtBuffer, "%s %s %i%%", weather->tempC, weather->tempH1, pop1Temp);
-//  sprintf(txtBuffer, "%s %s %3i%% %3i%%", weather->tempC, weather->tempH1, atof(weather->popH1)*100, atof(weather->popH4)*100);
+  int pop1Temp = atof(weather_data->popH1)*100;
+//  sprintf(txtBuffer, "%s %s", weather_data->tempC, weather_data->tempH1);
+  sprintf(txtBuffer, "%s %s %i%%", weather_data->tempC, weather_data->tempH1, pop1Temp);
+//  sprintf(txtBuffer, "%s %s %3i%% %3i%%", weather_data->tempC, weather_data->tempH1, atof(weather_data->popH1)*100, atof(weather_data->popH4)*100);
   indexedLayer3.setFont(font5x7);
   indexedLayer3.setIndexedColor(1,{0xff, 0x00, 0x00});
   indexedLayer3.drawString(0, 14, 1, txtBuffer);
   indexedLayer3.swapBuffers();
-}
-
-
-void displayWeatherDebug(Weather* weather) {
-
-    Serial.print("descriptionC: ");
-    Serial.println(weather->descriptionC);
-    Serial.print("descriptionShortC: ");
-    Serial.println(weather->descriptionShortC);
-    Serial.print("sunset: ");
-    Serial.println(weather->sunset);
-    Serial.print("tempC: ");
-    Serial.println(weather->tempC);
-    Serial.print("pressureC: ");
-    Serial.println(weather->pressureC);
-    Serial.print("humidityC: ");
-    Serial.println(weather->humidityC);
-    Serial.print("windSpeedC: ");
-    Serial.println(weather->windSpeedC);
-    Serial.print("windDirectionC: ");
-    Serial.println(weather->windDirectionC);
-    Serial.print("windGustC: ");
-    Serial.println(weather->windGustC);
-  
-    Serial.print("Hourly Feels like: ");
-    Serial.println(weather->feelsLikeH1); //prints ⸮ instead of degree sign \b0
-    Serial.print("Hourly High Temp: ");
-    Serial.println(weather->tempH1);
-    Serial.print("Hourly Humidity: ");
-    Serial.println(weather->humidityH1);
-    Serial.print("Hourly PoP: ");
-    Serial.println(weather->popH1);
-    Serial.print("Hourly PoP4: ");
-    Serial.println(weather->popH4);
-    Serial.print("Today Min Temp: ");
-    Serial.println(weather->tempMinD);
-    Serial.print("Today Max Temp: ");
-    Serial.println(weather->tempMaxD);
-    Serial.print("Today Humidity: ");
-    Serial.println(weather->humidityD);
-    Serial.print("Tomorrow Min Temp: ");
-    Serial.println(weather->tempMinD1);
-    Serial.print("Tomorrow Max Temp: ");
-    Serial.println(weather->tempMaxD1);
-    Serial.print("Tomorrow Humidity: ");
-    Serial.println(weather->humidityD1);
-    Serial.print("Updated at: ");
-    Serial.println(weather->updated);
 }
 
 
@@ -517,22 +470,22 @@ boolean getDataWrapper(String data_source, int connectWifiTries, int getDataTrie
     if (WiFi.status() == WL_CONNECTED) {
 
       if ( data_source == "weather") {
-        dataSuccess = getJSON(URL);
         Serial.println("weather if");
+        dataSuccess = getJSON(URL_weather);
       } else if ( data_source == "pollution") {
         dataSuccess = getJSON(URL_pollution);
       } else if ( data_source == "covid") {
         Serial.println("Covid data retrieval not yet implemented.");
 //        dataSuccess = getJSON(URL_covid_base);
       } else {
-        dataSuccess = getJSON(URL);
         Serial.println("default else");
+        dataSuccess = getJSON(URL_weather);
       }
       
       if (dataSuccess) {
 
         if ( data_source == "weather") {
-          fillWeatherFromJson(&weather); //weather.h
+          fillWeatherFromJson(&weather_data); //weather.h
         } else if ( data_source == "pollution") {
           Serial.println("Pollution data storage not yet implemented.");
 //          fillPollutionFromJson(&pollution_data); //weather.h
@@ -540,7 +493,7 @@ boolean getDataWrapper(String data_source, int connectWifiTries, int getDataTrie
           Serial.println("Covid data storage not yet implemented.");
 //          fillCovidDataFromJson(&covid_data); //weather.h
         } else {
-          fillWeatherFromJson(&weather); //weather.h
+          fillWeatherFromJson(&weather_data); //weather.h
           Serial.println("default else");
         }
         
