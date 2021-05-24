@@ -152,7 +152,7 @@ void setup() {
 
 
   //get data at startup
-  bool dataWrapperSuccess = getDataWrapper('weather', 5,2); //try connecting to wifi 5 times, getting data twice
+  bool dataWrapperSuccess = getDataWrapper("weather", 5,2); //try connecting to wifi 5 times, getting data twice
 
 //  disconnectFromWifi(); //TODO do we want to explicitly disconnect from wifi between updates? chip heat savings?
 
@@ -466,36 +466,39 @@ boolean getDataWrapper(char data_source, int connectWifiTries, int getDataTries)
     //connect to wifi
     if (WiFi.status() == WL_CONNECTED) {
 
-      switch (data_source) {
-        case 'weather':
-          dataSuccess = getJSON(URL);
-        case 'pollution':
-          dataSuccess = getJSON(URL_pollution);
-        case 'covid':
-          Serial.println("Covid data retrieval not yet implemented.");
-//          dataSuccess = getJSON(URL_covid_base);
-        default:
-          dataSuccess = getJSON(URL);
+      if ( data_source == "weather") {
+        dataSuccess = getJSON(URL);
+        Serial.println("weather if");
+      } else if ( data_source == "pollution") {
+        dataSuccess = getJSON(URL_pollution);
+      } else if ( data_source == "covid") {
+        Serial.println("Covid data retrieval not yet implemented.");
+//        dataSuccess = getJSON(URL_covid_base);
+      } else {
+        dataSuccess = getJSON(URL);
+        Serial.println("default else");
       }
       
       if (dataSuccess) {
-        switch (data_source) {
-          case 'weather':
-            fillWeatherFromJson(&weather); //weather.h
-          case 'pollution':
-            Serial.println("Pollution data storage not yet implemented.");
-//            fillPollutionFromJson(&pollution_data); //weather.h
-          case 'covid':
-            Serial.println("Covid data storage not yet implemented.");
-//            fillCovidDataFromJson(&covid_data); //weather.h
-          default:
-            fillWeatherFromJson(&weather); //weather.h
+
+        if ( data_source == "weather") {
+          fillWeatherFromJson(&weather); //weather.h
+        } else if ( data_source == "pollution") {
+          Serial.println("Pollution data storage not yet implemented.");
+//          fillPollutionFromJson(&pollution_data); //weather.h
+        } else if ( data_source == "covid") {
+          Serial.println("Covid data storage not yet implemented.");
+//          fillCovidDataFromJson(&covid_data); //weather.h
+        } else {
+          fillWeatherFromJson(&weather); //weather.h
+          Serial.println("default else");
         }
         
       } else {
         if (debugSerial) {
+          //printing retained here to report each time an attempt fails
           Serial.print("ERROR: Did not get ");
-          Serial.print(String(data_source));
+          Serial.print(data_source);
           Serial.println(" data");
         }
       } //endif dataSuccess
