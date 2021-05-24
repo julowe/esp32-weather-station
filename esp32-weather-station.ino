@@ -19,7 +19,6 @@
 //TODO
 //todo add air pollution, pm2.5 (or10?) for smoke season https://openweathermap.org/api/air-pollution
 //todo add covid data (see parameters.h)
-//todo use NTP?
 //TODO better differentiate get or parse data failures? But not sure if I would do anything different with different failures...
 //TODO save data to SD card?
 //TODO sleep during display intervals? or keep arduino on?
