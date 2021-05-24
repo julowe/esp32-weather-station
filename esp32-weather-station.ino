@@ -355,20 +355,22 @@ void displayClock() {
   //Day date
   sprintf(txtBuffer, "%02d", now.day());
 //  indexedLayer1.setFont(font3x5);
-  indexedLayer1.drawString(13, 0, 1, txtBuffer);
+  indexedLayer1.drawString(14, 0, 1, txtBuffer);
   indexedLayer1.swapBuffers();
 
   //month
   sprintf(txtBuffer, "%s", monthsOfTheYr[(now.month()-1)]);
 //  indexedLayer1.setFont(font3x5);
-  indexedLayer1.drawString(22, 0, 1, txtBuffer);
+  indexedLayer1.drawString(24, 0, 1, txtBuffer);
   indexedLayer1.swapBuffers();
 
   //time
-  sprintf(txtBuffer, "%02d:%02d", now.hour(), now.minute());
+  sprintf(txtBuffer, "%d:%02d", now.hour(), now.minute());
 //  indexedLayer1.setFont(font3x5);
-  indexedLayer1.drawString(35, 0, 1, txtBuffer);
+  indexedLayer1.drawString(38, 0, 1, txtBuffer);
   indexedLayer1.swapBuffers();
+
+  //TODO AM/PM indicator? 24h? meh?
 }
 
 
