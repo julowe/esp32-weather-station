@@ -81,7 +81,6 @@ char monthsOfTheYr[12][4] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "A
 //debug/admin stuff
 const bool debug = true;
 const bool debugSerial = true;
-//bool dataSuccess = false;
 
 //#if debug == 1
 
@@ -192,7 +191,8 @@ void loop() {
       Serial.print(" minute mark, time is: ");
       Serial.print(now.hour());
       Serial.print(":");
-      Serial.println(now.minute());
+      print2digitsLn(now.minute());
+//      Serial.println(now.minute());
     }
 
     dataWrapperSuccess = getDataWrapper();
@@ -210,7 +210,8 @@ void loop() {
       Serial.print("NOT updating weather because it is NOT ");
       Serial.print(weatherUpdateInterval);
       Serial.print(" minute mark, minute = ");
-      Serial.println(now.minute());
+      print2digitsLn(now.minute());
+//      Serial.println(now.minute());
     }
   }
 
@@ -223,7 +224,8 @@ void loop() {
       Serial.print(" hour mark, time is: ");
       Serial.print(now.hour());
       Serial.print(":");
-      Serial.println(now.minute());
+      print2digitsLn(now.minute());
+//      Serial.println(now.minute());
     }
     /*TODO
      * get json data
@@ -237,7 +239,8 @@ void loop() {
       Serial.print(" hour mark, time is: ");
       Serial.print(now.hour());
       Serial.print(":");
-      Serial.println(now.minute());
+      print2digitsLn(now.minute());
+//      Serial.println(now.minute());
     }
   }
 
@@ -435,7 +438,15 @@ void print_wakeup_reason(){
 }
 
 
-boolean getDataWrapper(char data_source, int connectWifiTries, int getDataTries) {
+void print2digitsLn(int number) {
+  if (number >= 0 && number < 10) {
+    Serial.print('0');
+  }
+  Serial.println(number);
+}
+
+
+boolean getDataWrapper(String data_source, int connectWifiTries, int getDataTries) {
   bool dataSuccess = false;
   int connectWifiTrialNumber = 1;
   int getDataTrialNumber = 1;
