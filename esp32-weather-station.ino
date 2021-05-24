@@ -203,7 +203,25 @@ void loop() {
     } else if (debugSerial && !dataWrapperSuccess) {
       Serial.println("ERROR: Did not retrieve weather data.");
     }       
-    //update later to incorporate weather and other data? or update each in turn?
+    
+    //Display Data
+    if (dataWrapperSuccess) {
+      //TODO make 'last updated' it's own layer
+      displayWeather(&weather);
+    } else {
+      if (debugSerial) {
+        Serial.println("Updating matrix with failure message");
+      }
+      //TODO display anything different here? or just leave old data up? update 'last updated' layer only?
+      
+      indexedLayer2.fillScreen(0);
+      indexedLayer3.fillScreen(0);
+    
+      indexedLayer3.setFont(font3x5);
+      indexedLayer3.setIndexedColor(1,{0xff, 0x00, 0x00});
+      indexedLayer3.drawString(0, 25, 1, "Failed to Update");
+      indexedLayer3.swapBuffers();
+    }
   
   } else {
     if (debugSerial) {
@@ -216,8 +234,8 @@ void loop() {
   }
 
 
-  if (1 == 2){ //check if time to update covid data
-//  if (now.hours() % covidUpdateInterval == 0 && now.minute() == 0){ // update every Xth hours
+//  if (now.hour() % covidUpdateInterval == 0 && now.minute() == 0){ // update every Xth hours
+  if (now.hour() % covidUpdateInterval == 0){ // update every Xth hours
     if (debugSerial) {
       Serial.print("Updating covid data because it is a ");
       Serial.print(covidUpdateInterval);
@@ -232,6 +250,37 @@ void loop() {
      * update covid data struct
      * print new data if in serial debug mode
      */
+
+
+    dataWrapperSuccess = getDataWrapper("covid");
+    
+    if (debugSerial && dataWrapperSuccess) {
+      Serial.println("Succesfully got covid data");
+//      displayWeatherDebug(&weather); //TODO make covid data display debug?
+    } else if (debugSerial && !dataWrapperSuccess) {
+      Serial.println("ERROR: Did not retrieve covid data.");
+    }       
+    
+    //Display Data
+    if (dataWrapperSuccess) {
+      //TODO make 'last updated' it's own layer
+//      displayWeather(&weather); //TODO make covid data display function
+    } else {
+      if (debugSerial) {
+//        Serial.println("Updating matrix with failure message");
+        Serial.println("Not changing led display as displaying covid data is a work in progress.");
+      }
+      //TODO display anything different here? or just leave old data up? update 'last updated' layer only?
+      
+//      indexedLayer2.fillScreen(0);
+//      indexedLayer3.fillScreen(0);
+//    
+//      indexedLayer3.setFont(font3x5);
+//      indexedLayer3.setIndexedColor(1,{0xff, 0x00, 0x00});
+//      indexedLayer3.drawString(0, 25, 1, "Failed to Update");
+//      indexedLayer3.swapBuffers();
+    }
+     
   } else {
     if (debugSerial) {
       Serial.print("NOT updating covid data because it is NOT ");
@@ -244,25 +293,7 @@ void loop() {
     }
   }
 
-  //Display Data
-  if (dataWrapperSuccess) {
-    //function to display data on led matrix TODO
-    //TODO make 'last updated' it's own layer
-    displayWeather(&weather);
-  } else {
-    if (debugSerial) {
-      Serial.println("Updating matrix with failure message");
-    }
-    //TODO display anything different here? or just leave old data up? update 'last updated' layer only?
-    
-    indexedLayer2.fillScreen(0);
-    indexedLayer3.fillScreen(0);
-  
-    indexedLayer3.setFont(font3x5);
-    indexedLayer3.setIndexedColor(1,{0xff, 0x00, 0x00});
-    indexedLayer3.drawString(0, 25, 1, "Failed to Update");
-    indexedLayer3.swapBuffers();
-  }
+
 
 //////////////////////////////////////////////
   displayClock();
@@ -451,9 +482,13 @@ boolean getDataWrapper(String data_source, int connectWifiTries, int getDataTrie
   int connectWifiTrialNumber = 1;
   int getDataTrialNumber = 1;
   if (debugSerial) {
-    Serial.println("---- Starting getDataWrapper() ----");
-    Serial.print("dataSuccess = ");
-    Serial.println(dataSuccess);
+    Serial.print("---- Starting getDataWrapper(");
+    Serial.print(data_source);
+    Serial.print(", ");
+    Serial.print(connectWifiTries);
+    Serial.print(", ");
+    Serial.print(getDataTries);
+    Serial.println(") ----");
   }
 
   while (connectWifiTrialNumber <= connectWifiTries && WiFi.status() != WL_CONNECTED) {
@@ -523,9 +558,11 @@ boolean getDataWrapper(String data_source, int connectWifiTries, int getDataTrie
         Serial.println("ERROR: Not connected to wifi, attempting to reconnect");
       }
       connectToWifi();
+      
     } //endif wifi connected
     getDataTrialNumber++;
     delay(getDataDelay);
+    
   } //end while
 
   return dataSuccess;
