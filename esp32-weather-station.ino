@@ -7,6 +7,8 @@
  *  Adapted from SmartMatrix example file
  *  in boolean RTC_DS1307::begin(void):
  *  Change Wire.begin() to Wire.begin(14, 13)
+ *  
+ *  NTP from : https://randomnerdtutorials.com/esp32-date-time-ntp-client-server-arduino/
 */
 
 /*
@@ -78,10 +80,17 @@ const int defaultBrightness = (35*255)/100;     // dim: 35% brightness
 char daysOfTheWeek[7][4] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
 char monthsOfTheYr[12][4] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
 
+//NTP stuff
+const char* ntpServer = "pool.ntp.org";
+const long gmtOffset_sec = -8*3600;
+//const long gmtOffset_sec = 0;
+const int daylightOffset_sec = 3600;
+struct tm ntpTimeInfo;
 
 //debug/admin stuff
 const bool debug = true;
 const bool debugSerial = true;
+bool updateRTC = false; //don't really need this until we stop using RTC and don't just end the sketch if RTC not working
 
 //TODO fix this/make it work another way
 //#if debug == 1
@@ -107,9 +116,13 @@ void setup() {
   Serial.begin(115200);
   delay(1000);
 
+  //set up NTP
+  configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
+
   if (debug) {
     Serial.println("Debug Mode: ON");
   }
+  
   if (debugSerial) {
     Serial.println("Serial Debug Mode: ON");
   }
@@ -120,22 +133,39 @@ void setup() {
   }
 
   print_wakeup_reason();
-
+  
   Serial.println("DS1307RTC Test");
-  if (! rtc.begin()) {
-    Serial.println("Couldn't find RTC");
+  if (rtc.begin()) {
+    updateRTC = true;
+  } else {
+    Serial.println("ERROR: Couldn't find RTC");
+    //updateRTC == false; //false is default
     Serial.flush();
     abort();
   }
 
-  if (! rtc.isrunning()) {
-    Serial.println("RTC is NOT running, let's set the time!");
-    // When time needs to be set on a new device, or after a power loss, the
-    // following line sets the RTC to the date & time this sketch was compiled
-    rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
-    // This line sets the RTC with an explicit date & time, for example to set
-    // January 21, 2014 at 3am you would call:
-    // rtc.adjust(DateTime(2014, 1, 21, 3, 0, 0));
+
+  if (rtc.isrunning()) {
+    if (debugSerial) {
+      Serial.println("RTC IS running, let's check the time!");
+    }
+    //rtc is running, but check time on start up
+    bool timesMatched = verifyTime();
+  } else {
+    if (debugSerial) {
+      Serial.println("RTC is NOT running, let's set the time!");
+    }
+    
+    if ( getNTP() ) {
+      // This line sets the RTC with an explicit date & time, for example to set
+      // January 21, 2014 at 3am you would call:
+      // rtc.adjust(DateTime(2014, 1, 21, 3, 0, 0));    
+      updateRTCtoNTP();
+    } else {
+      // When time needs to be set on a new device, or after a power loss, the
+      // following line sets the RTC to the date & time this sketch was compiled
+      rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
+    }
   }
 
   // setup matrix
@@ -225,6 +255,9 @@ void loop() {
       indexedLayer3.drawString(0, 25, 1, "Failed to Update");
       indexedLayer3.swapBuffers();
     }
+
+    //update time - later maybe break out to own interval?
+    bool timesMatched = verifyTime();
   
   } else {
     if (debugSerial) {
@@ -448,6 +481,7 @@ boolean getDataWrapper(String data_source, int connectWifiTries, int getDataTrie
     Serial.println(") ----");
   }
 
+  //TODO move this logic into connectToWifi(), passing trial number
   while (connectWifiTrialNumber <= connectWifiTries && WiFi.status() != WL_CONNECTED) {
     Serial.print("Attempt #");
     Serial.print(connectWifiTrialNumber);
@@ -544,4 +578,108 @@ boolean getDataWrapper(String data_source, int connectWifiTries, int getDataTrie
   } //end while
 
   return dataSuccess;
+}
+
+boolean getNTP(){
+  bool getNTPSuccess = false;
+
+//  bool wifiConnected = connectToWifi(); //do we need this result again?
+  
+  if ( connectToWifi() ) {
+    if(getLocalTime(&ntpTimeInfo)){
+      getNTPSuccess = true;
+    } else {
+      if (debugSerial) {
+        Serial.println("Failed to obtain time");
+      }
+      return getNTPSuccess;
+    }
+    
+    if (debugSerial) {
+      Serial.println("NTP retrieved time is: ");
+      
+      Serial.println(&ntpTimeInfo, "%A, %B %d %Y %H:%M:%S");
+      
+//      Serial.print("Day of week: ");
+//      Serial.println(&ntpTimeInfo, "%A");
+//      Serial.print("Month: ");
+//      Serial.println(&ntpTimeInfo, "%B");
+//      Serial.print("Day of Month: ");
+//      Serial.println(&ntpTimeInfo, "%d");
+//      Serial.print("Year: ");
+//      Serial.println(&ntpTimeInfo, "%Y");
+//      Serial.print("Hour: ");
+//      Serial.println(&ntpTimeInfo, "%H");
+//      Serial.print("Hour (12 hour format): ");
+//      Serial.println(&ntpTimeInfo, "%I");
+//      Serial.print("Minute: ");
+//      Serial.println(&ntpTimeInfo, "%M");
+//      Serial.print("Second: ");
+//      Serial.println(&ntpTimeInfo, "%S");
+    
+//      Serial.println("Time variables");
+//      char timeHour[3];
+//      strftime(timeHour,3, "%H", &ntpTimeInfo);
+//      Serial.println(timeHour);
+//      char timeWeekDay[10];
+//      strftime(timeWeekDay,10, "%A", &ntpTimeInfo);
+//      Serial.println(timeWeekDay);
+//      Serial.println();
+    }
+  }
+  return getNTPSuccess;
+  
+}
+
+
+void updateRTCtoNTP() {
+      rtc.adjust(DateTime(ntpTimeInfo.tm_year+1900, ntpTimeInfo.tm_mon+1, ntpTimeInfo.tm_mday, ntpTimeInfo.tm_hour, ntpTimeInfo.tm_min, ntpTimeInfo.tm_sec));
+}
+
+
+bool verifyTime() {
+  //compare RTC time to NTP time struct, return false if RTC time doe snot match NTP, or if can't get NTP
+  bool timesMatch = false;
+
+  DateTime rtc_now = rtc.now();
+
+  if ( getNTP() ) {
+    if ( rtc_now.year() ==  ntpTimeInfo.tm_year+1900 && rtc_now.month() ==  ntpTimeInfo.tm_mon+1 && rtc_now.day() ==  ntpTimeInfo.tm_mday && rtc_now.hour() ==  ntpTimeInfo.tm_hour && rtc_now.minute() ==  ntpTimeInfo.tm_min) {
+      timesMatch = true;
+      if (debugSerial) {
+        Serial.println("Info: Times Match.");
+      }
+    } else {
+      if (debugSerial) {
+        Serial.print("WARN: RTC Time: ");
+        Serial.print(rtc_now.year());
+        Serial.print("-");
+        Serial.print(rtc_now.month());
+        Serial.print("-");
+        Serial.print(rtc_now.day());
+        Serial.print("T");
+        Serial.print(rtc_now.hour());
+        Serial.print(":");
+        Serial.print(rtc_now.minute());
+        Serial.print(" does not match NTP Time: ");
+        Serial.print(ntpTimeInfo.tm_year+1900);
+        Serial.print("-");
+        Serial.print(ntpTimeInfo.tm_mon+1);
+        Serial.print("-");
+        Serial.print(ntpTimeInfo.tm_mday);
+        Serial.print("T");
+        Serial.print(ntpTimeInfo.tm_hour);
+        Serial.print(":");
+        Serial.println(ntpTimeInfo.tm_min);
+        
+        Serial.println("Updated RTC time to NTP time.");
+      }
+      updateRTCtoNTP();
+    }
+  } else {
+    if (debugSerial) {
+      Serial.println("WARN: Could not get NTP time, so could not verify RTC time.");
+    }
+  }
+  return timesMatch;
 }
