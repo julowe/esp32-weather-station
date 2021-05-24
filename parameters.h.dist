@@ -3,4 +3,16 @@
 #define ESP32_HOSTNAME "DISPLAY_HOSTNAME"
 
 //use decimal degrees for latitude and longitude - e.g. `lat=88.9876`
-#define URL "http://api.openweathermap.org/data/2.5/onecall?units=metric&exclude=minutely&appid={APIKEY}&lat={lat}&lon={lon}&lang=en"
+#define URL_weather "http://api.openweathermap.org/data/2.5/onecall?units=metric&exclude=minutely&appid={APIKEY}&lat={lat}&lon={lon}&lang=en"
+//api info: https://openweathermap.org/api/one-call-api
+
+#define URL_pollution "http://api.openweathermap.org/data/2.5/air_pollution?lat={lat}&lon={lon}&appid={APIKEY}"
+//api info: https://openweathermap.org/api/air-pollution
+
+
+/* TODO add covid data retrieval in general & also check generalization of links below
+ * 1) ALL days... no data logged on sundays https://api.covidactnow.org/v2/cbsa/{CBSA_ID}.timeseries.json?apiKey={COVID_API_KEY}
+ * 2) can specify dates, smaller returned data, but need to do more math, and less documentation. also no sunday data for some counties https://api.covid19tracking.narrativa.com/api/country/{COUNTRY}/region/{STATE}/sub_region/{COUNTY}?date_from=2021-04-18&date_to=2021-04-20
+ */
+
+#define URL_covid_base "https://api.covid19tracking.narrativa.com/api/country/{COUNTRY}/region/{STATE}/sub_region/{COUNTY}?" //date_from=2021-04-18&date_to=2021-04-20
