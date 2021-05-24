@@ -281,18 +281,17 @@ void loop() {
       print2digitsLn(now.minute());
 //      Serial.println(now.minute());
     }
+    
     /*TODO
      * get json data
      * update covid data struct
      * print new data if in serial debug mode
      */
-
-
     dataWrapperSuccess = getDataWrapper("covid");
     
     if (debugSerial && dataWrapperSuccess) {
       Serial.println("Succesfully got covid data");
-//      printWeatherDebug(&weather_data); //TODO make covid data display debug?
+//      printCovidDebug(&weather_data); //TODO make covid data display debug
     } else if (debugSerial && !dataWrapperSuccess) {
       Serial.println("ERROR: Did not retrieve covid data.");
     }       
@@ -300,7 +299,7 @@ void loop() {
     //Display Data
     if (dataWrapperSuccess) {
       //TODO make 'last updated' it's own layer
-//      displayWeather(&weather_data); //TODO make covid data display function
+//      displayCovidData(&covid_data); //TODO make covid data display function
     } else {
       if (debugSerial) {
 //        Serial.println("Updating matrix with failure message");
@@ -369,8 +368,6 @@ void sleep(uint64_t sleepTime) {
 
 void displayClock() {
   DateTime now = rtc.now();
-  
-  //TODO update display with actual data
   char txtBuffer[20];
 
   // clear screen before writing new text
@@ -379,7 +376,6 @@ void displayClock() {
   //drawString of all date data at once left large gaps (5?6? pixels), so I split up draw commands to only leave 2 pixel gaps
   indexedLayer1.setFont(font3x5);
   indexedLayer1.setIndexedColor(1,{0x00, 0x00, 0xff});
-//  indexedLayer1.setIndexedColor(2,{0xff, 0x00, 0x00});
   
   //Weekday
 //  sprintf(txtBuffer, "%s %02d %s %02d:%02d", daysOfTheWeek[now.dayOfTheWeek()], now.day(), monthsOfTheYr[(now.month()-1)], now.hour(), now.minute());
