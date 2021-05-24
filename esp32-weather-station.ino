@@ -83,16 +83,20 @@ const bool debug = true;
 const bool debugSerial = true;
 //bool dataSuccess = false;
 
-#if debug
-  boolean getDataWrapper(char data_source = 'weather', int connectWifiTries = 5, int getDataTries = 5);
-  const int weatherUpdateInterval = 15; //used as minutes
-  const int covidUpdateInterval = 4; //used as hours
-#else
+//#if debug == 1
+
   //only 1 get data attempt will likely always fail, so every other loop() cycle will fail because of httpclient.getstring() memory error
-  boolean getDataWrapper(char data_source = 'weather', int connectWifiTries = 1, int getDataTries = 1); 
-  const int weatherUpdateInterval = 1; //used as minutes
-  const int covidUpdateInterval = 4; //used as hours
-#endif
+  boolean getDataWrapper(String data_source = "weather", int connectWifiTries = 1, int getDataTries = 1); 
+  const int weatherUpdateInterval = 1; //used as ds
+  const int covidUpdateInterval = 1; //used as hours
+  
+//#else
+
+//  boolean getDataWrapper(String data_source = "weather", int connectWifiTries = 5, int getDataTries = 5);
+//  const int weatherUpdateInterval = 15; //used as minutes
+//  const int covidUpdateInterval = 4; //used as hours
+
+//#endif
   
 const int connectWifiDelay = 5000; //5 seconds for now
 const int getDataDelay = 2000; //2 seconds for now
