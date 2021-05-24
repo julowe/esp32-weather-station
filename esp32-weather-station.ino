@@ -495,6 +495,14 @@ boolean getDataWrapper(String data_source, int connectWifiTries, int getDataTrie
     delay(connectWifiDelay);
   }
 
+  if (connectWifiTrialNumber == 1 && WiFi.status() == WL_CONNECTED) {
+    if (debugSerial) {
+      Serial.println("Already connected to wifi.");
+    }
+  }
+  //end TODO above
+
+  //TODO move while logic into getJSON() ?
   while (getDataTrialNumber <= getDataTries && !dataSuccess) {
     Serial.print("Attempt #");
     Serial.print(getDataTrialNumber);
