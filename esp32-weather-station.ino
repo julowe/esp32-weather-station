@@ -214,8 +214,9 @@ void loop() {
         Serial.println("Updating matrix with failure message");
       }
       //TODO display anything different here? or just leave old data up? update 'last updated' layer only?
-      
+
       indexedLayer2.fillScreen(0);
+      indexedLayer2.swapBuffers();
       indexedLayer3.fillScreen(0);
     
       indexedLayer3.setFont(font3x5);
