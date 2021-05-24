@@ -40,6 +40,7 @@ JSONVar jsonWeather;
 #include "parameters.h"
 #include "weather.h"
 //#include "display.h" //TODO - use weather icons from this file
+//#include "display-led.h"
 #include "network.h"
 
 const uint64_t SECOND = 1000;
@@ -473,31 +474,52 @@ boolean getDataWrapper(String data_source, int connectWifiTries, int getDataTrie
     if (WiFi.status() == WL_CONNECTED) {
 
       if ( data_source == "weather") {
-        Serial.println("weather if");
+        if (debugSerial) {
+          Serial.println("weather if");
+        }
         dataSuccess = getJSON(URL_weather);
       } else if ( data_source == "pollution") {
+        if (debugSerial) {
+          Serial.println("pollution if");
+        }
         dataSuccess = getJSON(URL_pollution);
       } else if ( data_source == "covid") {
+        if (debugSerial) {
+          Serial.println("covid if");
+        }
         Serial.println("Covid data retrieval not yet implemented.");
 //        dataSuccess = getJSON(URL_covid_base);
       } else {
-        Serial.println("default else");
+        if (debugSerial) {
+          Serial.println("default else");
+        }
         dataSuccess = getJSON(URL_weather);
       }
       
       if (dataSuccess) {
 
         if ( data_source == "weather") {
+          if (debugSerial) {
+            Serial.println("dataSuccess weather if");
+          }
           fillWeatherFromJson(&weather_data); //weather.h
         } else if ( data_source == "pollution") {
+          if (debugSerial) {
+            Serial.println("dataSuccess pollution if");
+          }
           Serial.println("Pollution data storage not yet implemented.");
 //          fillPollutionFromJson(&pollution_data); //weather.h
         } else if ( data_source == "covid") {
+          if (debugSerial) {
+            Serial.println("dataSuccess covid if");
+          }
           Serial.println("Covid data storage not yet implemented.");
 //          fillCovidDataFromJson(&covid_data); //weather.h
         } else {
+          if (debugSerial) {
+            Serial.println("dataSuccess default else");
+          }
           fillWeatherFromJson(&weather_data); //weather.h
-          Serial.println("default else");
         }
         
       } else {
