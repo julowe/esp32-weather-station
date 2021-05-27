@@ -115,9 +115,6 @@ void setup() {
   Serial.begin(115200);
   delay(1000);
 
-  //set up NTP
-  configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
-
   if (debug) {
     Serial.println("Debug Mode: ON");
   }
@@ -132,6 +129,21 @@ void setup() {
   }
 
   print_wakeup_reason();
+
+  // setup matrix
+  matrix.addLayer(&indexedLayer1);
+  matrix.addLayer(&indexedLayer2);
+  matrix.addLayer(&indexedLayer3);
+  matrix.begin();
+  
+  matrix.setBrightness(defaultBrightness);
+  
+  indexedLayer3.fillScreen(0);
+  
+  indexedLayer3.setFont(font3x5);
+  indexedLayer3.setIndexedColor(1,{0x00, 0x00, 0xff});
+  indexedLayer3.drawString(0, 25, 1, "Initializing");
+  indexedLayer3.swapBuffers();
   
   Serial.println("DS1307RTC Test");
   if (rtc.begin()) {
@@ -143,6 +155,9 @@ void setup() {
     abort();
   }
 
+
+  //set up NTP
+  configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
 
   if (rtc.isrunning()) {
     if (debugSerial) {
@@ -167,22 +182,10 @@ void setup() {
     }
   }
 
-  // setup matrix
-  matrix.addLayer(&indexedLayer1);
-  matrix.addLayer(&indexedLayer2);
-  matrix.addLayer(&indexedLayer3);
-  matrix.begin();
-  
-  matrix.setBrightness(defaultBrightness);
+
 
   displayClock();
 
-  indexedLayer3.fillScreen(0);
-  
-  indexedLayer3.setFont(font3x5);
-  indexedLayer3.setIndexedColor(1,{0x00, 0x00, 0xff});
-  indexedLayer3.drawString(0, 25, 1, "Initializing");
-  indexedLayer3.swapBuffers();
 
 
   //get data at startup
@@ -593,13 +596,13 @@ boolean getNTP(){
       getNTPSuccess = true;
     } else {
       if (debugSerial) {
-        Serial.println("Failed to obtain time");
+        Serial.println("ERROR: Failed to obtain NTP time");
       }
       return getNTPSuccess;
     }
     
     if (debugSerial) {
-      Serial.println("NTP retrieved time is: ");
+      Serial.print("Info: NTP retrieved time is: ");
       
       Serial.println(&ntpTimeInfo, "%A, %B %d %Y %H:%M:%S");
       
@@ -675,7 +678,7 @@ bool verifyTime() {
         Serial.print(":");
         Serial.println(ntpTimeInfo.tm_min);
         
-        Serial.println("Updated RTC time to NTP time.");
+        Serial.println("WARN: Updated RTC time to NTP time.");
       }
       updateRTCtoNTP();
     }
