@@ -38,6 +38,8 @@
 #include <Arduino_JSON.h> //QUESTION: any benefit to using ArduinoJson library here instead?
 JSONVar jsonWeather;
 
+JSONVar jsonResult;
+
 #include "parameters.h"
 #include "weather.h"
 //#include "display.h" //TODO - use weather icons from this file

@@ -11,6 +11,10 @@ struct Weather {
   char windDirectionC[10];
   char windGustC[10];
 
+  //this hour
+  char popH0[10]; //Probability Of Precipitation
+  
+
   //Next Hour (NB: 1, not 0; so not this current hour)
   char descriptionH1[30];
   char descriptionShortH1[20];
@@ -22,6 +26,10 @@ struct Weather {
   char popH4[10];
 
   //Today
+  char tempDayD[10];
+  char tempNightD[10];
+  char tempEveD[10];
+  char tempMornD[10];
   char descriptionD[30];
   char descriptionShortD[20];
   char iconD[10];
@@ -44,59 +52,68 @@ struct Weather {
 void fillWeatherFromJson(Weather* weather_data) {
 
   //current
-  sprintf(weather_data->descriptionC, "%s", (const char*) jsonWeather["current"]["weather"][0]["description"]);
-  sprintf(weather_data->descriptionShortC, "%s", (const char*) jsonWeather["current"]["weather"][0]["main"]);
-  sprintf(weather_data->tempC, "%2i\xb0", (int) round(jsonWeather["current"]["temp"]));
+  sprintf(weather_data->descriptionC, "%s", (const char*) jsonResult["current"]["weather"][0]["description"]);
+  sprintf(weather_data->descriptionShortC, "%s", (const char*) jsonResult["current"]["weather"][0]["main"]);
+  sprintf(weather_data->tempC, "%2i\xb0", (int) round(jsonResult["current"]["temp"]));
   
-  int timezone_offset = (int) jsonWeather["timezone_offset"];
-  int sunset = (int) jsonWeather["current"]["sunset"];
+  int timezone_offset = (int) jsonResult["timezone_offset"];
+  int sunset = (int) jsonResult["current"]["sunset"];
   int sunset_t = sunset + timezone_offset;
   sprintf(weather_data->sunset, "%2d:%02d", hour(sunset_t)-12, minute(sunset_t));
   
-  sprintf(weather_data->pressureC, "%4i", (int) jsonWeather["current"]["pressure"]);
+  sprintf(weather_data->pressureC, "%4i", (int) jsonResult["current"]["pressure"]);
 
-  int humidityInt = round(jsonWeather["current"]["humidity"]);
+  int humidityInt = round(jsonResult["current"]["humidity"]);
   if (humidityInt == 100){ //is humidty ever reported as 100? do this for screen layout reasons.
     humidityInt = 99;
   }
   sprintf(weather_data->humidityC, "%2i%%", (int) humidityInt);
 
   //TODO do i want a float or just the rounded int?
-//  sprintf(weather_data->uvIndexC, "%1i", (int) round(jsonWeather["current"]["uvi"]));
-  sprintf(weather_data->uvIndexC, "%1.2f",  (double) jsonWeather["current"]["uvi"] );
+//  sprintf(weather_data->uvIndexC, "%1i", (int) round(jsonResult["current"]["uvi"]));
+  sprintf(weather_data->uvIndexC, "%1.2f",  (double) jsonResult["current"]["uvi"] );
   
-  sprintf(weather_data->windSpeedC, "%2i", (int) round(jsonWeather["current"]["wind_speed"]));
-  sprintf(weather_data->windDirectionC, "%3i", (int) round(jsonWeather["current"]["wind_deg"]));
-  sprintf(weather_data->windGustC, "%2i", (int) round(jsonWeather["current"]["wind_gust"]));
+  sprintf(weather_data->windSpeedC, "%2i", (int) round(jsonResult["current"]["wind_speed"]));
+  sprintf(weather_data->windDirectionC, "%3i", (int) round(jsonResult["current"]["wind_deg"]));
+  sprintf(weather_data->windGustC, "%2i", (int) round(jsonResult["current"]["wind_gust"]));
+
+  //this hour
+  sprintf(weather_data->popH0, "%1.2f",  (double) jsonResult["hourly"][0]["pop"] );
+
 
   //next hour
-  sprintf(weather_data->descriptionH1, "%s", (const char*) jsonWeather["hourly"][1]["weather"][0]["description"]);
-  sprintf(weather_data->descriptionShortH1, "%s", (const char*) jsonWeather["hourly"][1]["weather"][0]["main"]);
-  sprintf(weather_data->iconH1, "%s", (const char*) jsonWeather["hourly"][1]["weather"][0]["icon"]);
-  sprintf(weather_data->tempH1, "%2i\xb0", (int) round(jsonWeather["hourly"][1]["temp"]));
-  sprintf(weather_data->feelsLikeH1, "%2i\xb0", (int) round(jsonWeather["hourly"][1]["feels_like"]));
-  sprintf(weather_data->humidityH1, "%3i %%", (int) jsonWeather["hourly"][1]["humidity"]);
-  sprintf(weather_data->popH1, "%1.2f",  (double) jsonWeather["hourly"][1]["pop"] );
-  sprintf(weather_data->popH4, "%1.2f",  (double) jsonWeather["hourly"][4]["pop"] ); //FIXME temp assignment to get a nonzero value
+  sprintf(weather_data->descriptionH1, "%s", (const char*) jsonResult["hourly"][1]["weather"][0]["description"]);
+  sprintf(weather_data->descriptionShortH1, "%s", (const char*) jsonResult["hourly"][1]["weather"][0]["main"]);
+  sprintf(weather_data->iconH1, "%s", (const char*) jsonResult["hourly"][1]["weather"][0]["icon"]);
+  sprintf(weather_data->tempH1, "%2i\xb0", (int) round(jsonResult["hourly"][1]["temp"]));
+  sprintf(weather_data->feelsLikeH1, "%2i\xb0", (int) round(jsonResult["hourly"][1]["feels_like"]));
+  sprintf(weather_data->humidityH1, "%3i %%", (int) jsonResult["hourly"][1]["humidity"]);
+  sprintf(weather_data->popH1, "%1.2f",  (double) jsonResult["hourly"][1]["pop"] );
+  sprintf(weather_data->popH4, "%1.2f",  (double) jsonResult["hourly"][4]["pop"] ); //FIXME temp assignment to get a nonzero value
 
   //today
-  sprintf(weather_data->descriptionD, "%s", (const char*) jsonWeather["daily"][0]["weather"][0]["description"]);
-  sprintf(weather_data->descriptionShortD, "%s", (const char*) jsonWeather["daily"][0]["weather"][0]["main"]);
-  sprintf(weather_data->iconD, "%s", (const char*) jsonWeather["daily"][0]["weather"][0]["icon"]);
-  sprintf(weather_data->tempMinD, "%2i\xb0", (int) round(jsonWeather["daily"][0]["temp"]["min"]));
-  sprintf(weather_data->tempMaxD, "%2i\xb0", (int) round(jsonWeather["daily"][0]["temp"]["max"]));
-  sprintf(weather_data->humidityD, "%3i %%", (int) jsonWeather["daily"][0]["humidity"]);
+  sprintf(weather_data->tempDayD, "%2i\xb0", (int) round(jsonResult["daily"][0]["temp"]["day"]));
+  sprintf(weather_data->tempNightD, "%2i\xb0", (int) round(jsonResult["daily"][0]["temp"]["night"]));
+  sprintf(weather_data->tempEveD, "%2i\xb0", (int) round(jsonResult["daily"][0]["temp"]["eve"]));
+  sprintf(weather_data->tempMornD, "%2i\xb0", (int) round(jsonResult["daily"][0]["temp"]["morn"]));
+
+  sprintf(weather_data->descriptionD, "%s", (const char*) jsonResult["daily"][0]["weather"][0]["description"]);
+  sprintf(weather_data->descriptionShortD, "%s", (const char*) jsonResult["daily"][0]["weather"][0]["main"]);
+  sprintf(weather_data->iconD, "%s", (const char*) jsonResult["daily"][0]["weather"][0]["icon"]);
+  sprintf(weather_data->tempMinD, "%2i\xb0", (int) round(jsonResult["daily"][0]["temp"]["min"]));
+  sprintf(weather_data->tempMaxD, "%2i\xb0", (int) round(jsonResult["daily"][0]["temp"]["max"]));
+  sprintf(weather_data->humidityD, "%3i %%", (int) jsonResult["daily"][0]["humidity"]);
 
   //next day
-  sprintf(weather_data->descriptionD1, "%s", (const char*) jsonWeather["daily"][1]["weather"][0]["description"]);
-  sprintf(weather_data->descriptionShortD1, "%s", (const char*) jsonWeather["daily"][1]["weather"][0]["main"]);
-  sprintf(weather_data->iconD1, "%s", (const char*) jsonWeather["daily"][1]["weather"][0]["icon"]);
-  sprintf(weather_data->tempMinD1, "%2i\xb0", (int) round(jsonWeather["daily"][1]["temp"]["min"]));
-  sprintf(weather_data->tempMaxD1, "%2i\xb0", (int) round(jsonWeather["daily"][1]["temp"]["max"]));
-  sprintf(weather_data->humidityD1, "%3i %%", (int) jsonWeather["daily"][1]["humidity"]);
+  sprintf(weather_data->descriptionD1, "%s", (const char*) jsonResult["daily"][1]["weather"][0]["description"]);
+  sprintf(weather_data->descriptionShortD1, "%s", (const char*) jsonResult["daily"][1]["weather"][0]["main"]);
+  sprintf(weather_data->iconD1, "%s", (const char*) jsonResult["daily"][1]["weather"][0]["icon"]);
+  sprintf(weather_data->tempMinD1, "%2i\xb0", (int) round(jsonResult["daily"][1]["temp"]["min"]));
+  sprintf(weather_data->tempMaxD1, "%2i\xb0", (int) round(jsonResult["daily"][1]["temp"]["max"]));
+  sprintf(weather_data->humidityD1, "%3i %%", (int) jsonResult["daily"][1]["humidity"]);
 
-//  int timezone_offset = (int) jsonWeather["timezone_offset"]; //set above already
-  int dt = (int) jsonWeather["current"]["dt"];
+//  int timezone_offset = (int) jsonResult["timezone_offset"]; //set above already
+  int dt = (int) jsonResult["current"]["dt"];
   int t = dt + timezone_offset;
   sprintf(weather_data->updated, "MAJ : %02d/%02d %02d:%02d", day(t), month(t), hour(t), minute(t));
 }
@@ -146,7 +163,15 @@ void printWeatherDebug(Weather* weather_data) {
   Serial.print("Hourly PoP4: ");
   Serial.println(weather_data->popH4);
   
-  //today  
+  //today
+  Serial.print("tempDayD: ");
+  Serial.println(weather_data->tempDayD);
+  Serial.print("tempNightD: ");
+  Serial.println(weather_data->tempNightD);
+  Serial.print("tempEveD: ");
+  Serial.println(weather_data->tempEveD);
+  Serial.print("tempMornD: ");
+  Serial.println(weather_data->tempMornD); 
   Serial.print("descriptionD: ");
   Serial.println(weather_data->descriptionD);
   Serial.print("descriptionShortD: ");

@@ -58,9 +58,9 @@ boolean getJSON(const char* url) {
 //      TODO [D][HTTPClient.cpp:1260] handleHeaderResponse(): size: 18612
 //      myString.reserve(size);
 
-      jsonWeather = JSON.parse(http.getString());
+      jsonResult = JSON.parse(http.getString());
       
-      if (JSON.typeof(jsonWeather) == "undefined") { 
+      if (JSON.typeof(jsonResult) == "undefined") { 
         //TODO improve error reporting
         Serial.print("Parsing input failed! HTTP code : ");
         Serial.println(httpCode);
