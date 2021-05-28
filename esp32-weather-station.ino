@@ -462,32 +462,49 @@ void displayClock() {
   // clear screen before writing new text
   indexedLayer1.fillScreen(0);
 
-  //drawString of all date data at once left large gaps (5?6? pixels), so I split up draw commands to only leave 2 pixel gaps
-  indexedLayer1.setFont(font3x5);
+  indexedLayer1.setFont(font5x7);
   indexedLayer1.setIndexedColor(1,{0x00, 0x00, 0xff});
   
   //Weekday
-//  sprintf(txtBuffer, "%s %02d %s %02d:%02d", daysOfTheWeek[now.dayOfTheWeek()], now.day(), monthsOfTheYr[(now.month()-1)], now.hour(), now.minute());
   sprintf(txtBuffer, "%s", daysOfTheWeek[now.dayOfTheWeek()]);
   indexedLayer1.drawString(0, 0, 1, txtBuffer);
   indexedLayer1.swapBuffers();
 
   //Day date
   sprintf(txtBuffer, "%02d", now.day());
-//  indexedLayer1.setFont(font3x5);
-  indexedLayer1.drawString(14, 0, 1, txtBuffer);
+  indexedLayer1.drawString(16, 0, 1, txtBuffer);
   indexedLayer1.swapBuffers();
 
   //month
   sprintf(txtBuffer, "%s", monthsOfTheYr[(now.month()-1)]);
-//  indexedLayer1.setFont(font3x5);
-  indexedLayer1.drawString(24, 0, 1, txtBuffer);
+  indexedLayer1.drawString(27, 0, 1, txtBuffer);
   indexedLayer1.swapBuffers();
 
   //time
-  sprintf(txtBuffer, "%d:%02d", now.hour(), now.minute());
-//  indexedLayer1.setFont(font3x5);
-  indexedLayer1.drawString(38, 0, 1, txtBuffer);
+  //nicely align time
+  int timePos1;
+  int timePos2;
+  int timePos3;
+  if ( now.hour() < 10 ) {
+    timePos1 = 44;
+    timePos2 = 48;
+    timePos3 = 52;
+  } else {
+    timePos1 = 42;
+    timePos2 = 51;
+    timePos3 = 55;    
+  }
+  
+  //display time
+  sprintf(txtBuffer, "%d", now.hour());
+  indexedLayer1.drawString(timePos1, 0, 1, txtBuffer);
+  indexedLayer1.swapBuffers();
+  
+  indexedLayer1.drawString(timePos2, 0, 1, ":");
+  indexedLayer1.swapBuffers();
+  
+  sprintf(txtBuffer, "%02d", now.minute());
+  indexedLayer1.drawString(timePos3, 0, 1, txtBuffer);
   indexedLayer1.swapBuffers();
 
   //TODO AM/PM indicator? 24h? meh?
