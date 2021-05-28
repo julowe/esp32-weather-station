@@ -23,6 +23,35 @@
 //TODO save data to SD card?
 //TODO sleep during display intervals? or keep arduino on?
 //TODO move led display code to display-led.h
+//TODO hourly temp doesnt give much more info. use daily-timeframe temps instead?
+//TODO buttons to display diff data - random trello card(1), tomorrow weather. covid? pollution?
+/*TODO display pollution and allergy levels as 15x1-2 pixel bars at bottom of screen. 
+ * red yellow green bars as according to data/apis. 
+ * a physical button would then pop up a 15 x 8 pixel box all same color as data color with black text to show number, disappear after.... 30 seconds?
+ */
+
+
+/* TODO hmm well crap OpenWeatherMap is often wrong in the ~2 days of on and (mostly) off testing I've done. No it is not cloudy and raining, its sunny...
+ *  
+ *  so, other sources?
+ *  https://www.reddit.com/r/webdev/comments/8tjavu/now_that_the_free_wunderground_api_has_been/ which provides this ranking page:
+ *  https://www.forecastadvisor.com/
+ *  Here are results for my area:
+ *  
+Last Month (April) 
+The Weather Channel     91.67% - ibm call for code - works unti nov 2021 :-/  api key in my param file
+Weather Underground     91.11% - not free - maybe this key works: https://github.com/katzwebservices/Wunderground/blob/master/wunderground.php
+Foreca/Vaisala    88.06% - free for 12 months(?) https://developer.foreca.com/trial
+AccuWeather     87.50%  - Free api, 50 calls/day limit https://developer.accuweather.com/packages
+AerisWeather    86.39%
+NWS Digital Forecast    83.06% - assume free as gov, https://www.weather.gov/documentation/services-web-api
+World Weather Online    78.61%
+Wetter    77.50%
+OpenWeather     76.11%
+Persistence     60.00%
+Weather News    57.78%
+ *  
+ */
 
 /* TODO Fix out of memory httpclient.getstring() error. Or just keep letting it retrieve it twice?
  *  [D][HTTPClient.cpp:947] getString(): not enough memory to reserve a string! need: 17987
