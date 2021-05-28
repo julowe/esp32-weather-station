@@ -92,6 +92,11 @@ uint64_t sleepTime = MINUTE;
 //declare struct for weather data to be put in
 Weather weather_data;
 
+
+//trello stuff
+#include "trello.h";
+char trelloCardNameFirst[30];
+char trelloCardNameRandom[30];//ugh, ugly hack
 //LED Matrix & RTC stuff
 #include "RTClib.h"
 #include <MatrixHardware_ESP32_V0.h>
@@ -105,11 +110,13 @@ const uint8_t kDmaBufferRows = 4;       // known working: 2-4, use 2 to save RAM
 const uint8_t kPanelType = SM_PANELTYPE_HUB75_32ROW_MOD16SCAN;   // Choose the configuration that matches your panels.  See more details in MatrixCommonHub75.h and the docs: https://github.com/pixelmatix/SmartMatrix/wiki
 const uint32_t kMatrixOptions = (SM_HUB75_OPTIONS_NONE);        // see docs for options: https://github.com/pixelmatix/SmartMatrix/wiki
 const uint8_t kIndexedLayerOptions = (SM_INDEXED_OPTIONS_NONE);
+const uint8_t kScrollingLayerOptions = (SM_SCROLLING_OPTIONS_NONE);
 
 SMARTMATRIX_ALLOCATE_BUFFERS(matrix, kMatrixWidth, kMatrixHeight, kRefreshDepth, kDmaBufferRows, kPanelType, kMatrixOptions);
 SMARTMATRIX_ALLOCATE_INDEXED_LAYER(indexedLayer1, kMatrixWidth, kMatrixHeight, COLOR_DEPTH, kIndexedLayerOptions);
 SMARTMATRIX_ALLOCATE_INDEXED_LAYER(indexedLayer2, kMatrixWidth, kMatrixHeight, COLOR_DEPTH, kIndexedLayerOptions);
 SMARTMATRIX_ALLOCATE_INDEXED_LAYER(indexedLayer3, kMatrixWidth, kMatrixHeight, COLOR_DEPTH, kIndexedLayerOptions);
+SMARTMATRIX_ALLOCATE_SCROLLING_LAYER(scrollingLayer, kMatrixWidth, kMatrixHeight, COLOR_DEPTH, kScrollingLayerOptions);
 
 RTC_DS1307 rtc;
 const int defaultBrightness = (35*255)/100;     // dim: 35% brightness
@@ -173,6 +180,7 @@ void setup() {
   matrix.addLayer(&indexedLayer1);
   matrix.addLayer(&indexedLayer2);
   matrix.addLayer(&indexedLayer3);
+  matrix.addLayer(&scrollingLayer);
   matrix.begin();
   
   matrix.setBrightness(defaultBrightness);
@@ -230,7 +238,6 @@ void setup() {
   //get data at startup
   bool dataWrapperSuccess = getDataWrapper("weather", 5, 2); //try connecting to wifi 5 times, getting data twice
 
-//  disconnectFromWifi(); //TODO do we want to explicitly disconnect from wifi between updates? chip heat savings?
 
   //Display Data
   if (dataWrapperSuccess) {
@@ -245,7 +252,23 @@ void setup() {
     indexedLayer3.drawString(0, 25, 1, "Failed to Initialize");
     indexedLayer3.swapBuffers();
   }
+
   
+  bool dataWrapperTrelloSuccess = getDataWrapper("trello_cards", 5, 3); //try connecting to wifi 5 times, getting data thrice
+  if (debugSerial && dataWrapperSuccess) {
+    Serial.println("Succesfully got trello data");
+  } else if (debugSerial && !dataWrapperSuccess) {
+    Serial.println("ERROR: Did not retrieve trello data.");
+  }  
+
+  //Display Trello Data
+  if (dataWrapperSuccess) {
+    displayTrelloCards();
+  }
+
+
+  
+//  disconnectFromWifi(); //TODO do we want to explicitly disconnect from wifi between updates? chip heat savings?
 }
 
 void loop() {
@@ -299,6 +322,19 @@ void loop() {
 
     //update time - later maybe break out to own interval?
     bool timesMatched = verifyTime();
+
+    bool dataWrapperTrelloSuccess = getDataWrapper("trello_cards");
+    if (debugSerial && dataWrapperSuccess) {
+      Serial.println("Succesfully got trello data");
+    } else if (debugSerial && !dataWrapperSuccess) {
+      Serial.println("ERROR: Did not retrieve trello data.");
+    }  
+  
+    //Display Trello Data
+    if (dataWrapperSuccess) {
+      displayTrelloCards();
+    }
+  
   
   } else {
     if (debugSerial) {
@@ -474,6 +510,39 @@ void displayWeather(Weather* weather_data) {
   indexedLayer3.drawString(0, 14, 1, txtBuffer);
   indexedLayer3.swapBuffers();
 }
+void displayTrelloCards() {
+  
+    scrollingLayer.setMode(wrapForward);
+    scrollingLayer.setOffsetFromTop(24);
+//    scrollingLayer.setSpeed(10);
+    scrollingLayer.setSpeed(15);
+    scrollingLayer.setFont(font5x7);
+    scrollingLayer.setColor({0xff,0xff,0xff});
+//    String message = "First: " + trelloCardNameFirst;// + "& Random: " + trelloCardNameRandom;
+    char message[80];
+//    strcpy(message, "First: ");
+    strcpy(message, trelloCardNameFirst);
+//    strcat(message, trelloCardNameFirst);
+//    strcat(message, ", Random: ");
+    strcat(message, ", ");
+    strcat(message, trelloCardNameRandom);
+//    = "First: " + trelloCardNameFirst;// + "& Random: " + trelloCardNameRandom;
+
+  
+    scrollingLayer.start(message, -1);
+
+}
+
+void displayTestScroll() {
+
+    scrollingLayer.setMode(wrapForward);
+    scrollingLayer.setOffsetFromTop(21);
+    scrollingLayer.setSpeed(10);
+    scrollingLayer.setFont(font5x7);
+    scrollingLayer.setColor({0xff,0xff,0xff});
+    scrollingLayer.start("Wrap message 4 times", 4);
+}
+
 
 
 void print_wakeup_reason(){
@@ -568,6 +637,11 @@ boolean getDataWrapper(String data_source, int connectWifiTries, int getDataTrie
         }
         Serial.println("Covid data retrieval not yet implemented.");
 //        dataSuccess = getJSON(URL_covid_base);
+      } else if ( data_source == "trello_cards") {
+        if (debugSerial) {
+          Serial.println("trello if");
+        }
+        dataSuccess = getJSON(URL_trello_cards);
       } else {
         if (debugSerial) {
           Serial.println("default else");
@@ -595,6 +669,19 @@ boolean getDataWrapper(String data_source, int connectWifiTries, int getDataTrie
           }
           Serial.println("Covid data storage not yet implemented.");
 //          fillCovidDataFromJson(&covid_data); //weather.h
+        } else if ( data_source == "trello_cards") {
+          if (debugSerial) {
+            Serial.println("dataSuccess trello if");
+          }       
+          trelloFirstCard(trelloCardNameFirst);
+          trelloRandomCard(trelloCardNameRandom);
+          
+          if (debugSerial) {
+            Serial.println(trelloCardNameFirst);
+            Serial.println(trelloCardNameRandom);
+          }
+          //TODO Check for fill success?
+          jsonResult = JSON.parse("{}");        
         } else {
           if (debugSerial) {
             Serial.println("dataSuccess default else");
