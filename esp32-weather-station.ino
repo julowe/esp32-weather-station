@@ -267,14 +267,14 @@ void setup() {
 
   
   bool dataWrapperTrelloSuccess = getDataWrapper("trello_cards", 5, 3); //try connecting to wifi 5 times, getting data thrice
-  if (debugSerial && dataWrapperSuccess) {
+  if (debugSerial && dataWrapperTrelloSuccess) {
     Serial.println("Succesfully got trello data");
-  } else if (debugSerial && !dataWrapperSuccess) {
+  } else if (debugSerial && !dataWrapperTrelloSuccess) {
     Serial.println("ERROR: Did not retrieve trello data.");
   }  
 
   //Display Trello Data
-  if (dataWrapperSuccess) {
+  if (dataWrapperTrelloSuccess) {
     displayTrelloCards();
   }
 
