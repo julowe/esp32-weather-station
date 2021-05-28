@@ -23,6 +23,8 @@ struct Weather {
   char feelsLikeH1[10];
   char humidityH1[6];
   char popH1[10]; //Probability Of Precipitation
+
+  //4 hours ahead
   char popH4[10];
 
   //Today

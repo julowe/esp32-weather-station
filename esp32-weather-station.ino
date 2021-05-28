@@ -184,12 +184,22 @@ void setup() {
   matrix.begin();
   
   matrix.setBrightness(defaultBrightness);
-  
+
+  //Get time message
+  // clear screen before writing new text
+  indexedLayer1.fillScreen(0);
+
+  indexedLayer1.setFont(font3x5);
+  indexedLayer1.setIndexedColor(1,{0x00, 0x00, 0xff});
+  indexedLayer1.drawString(0, 0, 1, "Checking Time...");
+  indexedLayer1.swapBuffers();
+
+  //General Intialize message
   indexedLayer3.fillScreen(0);
   
   indexedLayer3.setFont(font3x5);
   indexedLayer3.setIndexedColor(1,{0x00, 0x00, 0xff});
-  indexedLayer3.drawString(0, 25, 1, "Initializing");
+  indexedLayer3.drawString(0, 13, 1, "Initializing");
   indexedLayer3.swapBuffers();
   
   Serial.println("DS1307RTC Test");
@@ -229,19 +239,21 @@ void setup() {
     }
   }
 
-
-
   displayClock();
 
+  //get weather data at startup
+  bool dataWrapperSuccess = getDataWrapper("weather", 5, 3); //try connecting to wifi 5 times, getting data thrice
 
+    if (debugSerial && dataWrapperSuccess) {
+      Serial.println("Succesfully got weather data");
+//      printWeatherDebug(&weather_data);
+    } else if (debugSerial && !dataWrapperSuccess) {
+      Serial.println("ERROR: Did not retrieve weather data.");
+    }  
 
-  //get data at startup
-  bool dataWrapperSuccess = getDataWrapper("weather", 5, 2); //try connecting to wifi 5 times, getting data twice
-
-
+    
   //Display Data
   if (dataWrapperSuccess) {
-    //function to display data on led matrix TODO
     displayWeather(&weather_data);
   } else {
     indexedLayer2.fillScreen(0);
@@ -249,7 +261,7 @@ void setup() {
   
     indexedLayer3.setFont(font3x5);
     indexedLayer3.setIndexedColor(1,{0xff, 0x00, 0x00});
-    indexedLayer3.drawString(0, 25, 1, "Failed to Initialize");
+    indexedLayer3.drawString(0, 13, 1, "Failed to Initialize");
     indexedLayer3.swapBuffers();
   }
 
@@ -316,7 +328,7 @@ void loop() {
     
       indexedLayer3.setFont(font3x5);
       indexedLayer3.setIndexedColor(1,{0xff, 0x00, 0x00});
-      indexedLayer3.drawString(0, 25, 1, "Failed to Update");
+      indexedLayer3.drawString(0, 13, 1, "Failed to Update");
       indexedLayer3.swapBuffers();
     }
 
@@ -498,7 +510,7 @@ void displayWeather(Weather* weather_data) {
 //  indexedLayer2.setFont(font8x13);
   indexedLayer2.setFont(font5x7);
   indexedLayer2.setIndexedColor(1,{0x00, 0xff, 0x00});
-  indexedLayer2.drawString(0, 6, 1, weather_data->descriptionC);
+  indexedLayer2.drawString(0, 8, 1, weather_data->descriptionC);
   indexedLayer2.swapBuffers();
 
   int pop1Temp = atof(weather_data->popH1)*100;
@@ -507,7 +519,7 @@ void displayWeather(Weather* weather_data) {
 //  sprintf(txtBuffer, "%s %s %3i%% %3i%%", weather_data->tempC, weather_data->tempH1, atof(weather_data->popH1)*100, atof(weather_data->popH4)*100);
   indexedLayer3.setFont(font5x7);
   indexedLayer3.setIndexedColor(1,{0xff, 0x00, 0x00});
-  indexedLayer3.drawString(0, 14, 1, txtBuffer);
+  indexedLayer3.drawString(0, 16, 1, txtBuffer);
   indexedLayer3.swapBuffers();
 }
 void displayTrelloCards() {
@@ -656,6 +668,7 @@ boolean getDataWrapper(String data_source, int connectWifiTries, int getDataTrie
             Serial.println("dataSuccess weather if");
           }
           fillWeatherFromJson(&weather_data); //weather.h
+          //TODO Check for fill success?
           jsonResult = JSON.parse("{}");        
         } else if ( data_source == "pollution") {
           if (debugSerial) {
@@ -687,6 +700,7 @@ boolean getDataWrapper(String data_source, int connectWifiTries, int getDataTrie
             Serial.println("dataSuccess default else");
           }
           fillWeatherFromJson(&weather_data); //weather.h
+          //TODO Check for fill success?     
           jsonResult = JSON.parse("{}");
         }
         
