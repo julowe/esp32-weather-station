@@ -2,17 +2,54 @@
 #define WIFI_PASSWORD "PASSWORD"
 #define ESP32_HOSTNAME "DISPLAY_HOSTNAME"
 
+
+// NB: In all template API calls below replace braces and keyword, e.g. if your openweathermap api key is 12345 then the below url will contain &appid=12345&
+
+
+//Weather: api info: https://openweathermap.org/api/one-call-api
 //use decimal degrees for latitude and longitude - e.g. `lat=88.9876`
 #define URL_weather "http://api.openweathermap.org/data/2.5/onecall?units=metric&exclude=minutely&appid={APIKEY}&lat={lat}&lon={lon}&lang=en"
-//api info: https://openweathermap.org/api/one-call-api
 
+
+//Pollution: api info: https://openweathermap.org/api/air-pollution
 #define URL_pollution "http://api.openweathermap.org/data/2.5/air_pollution?lat={lat}&lon={lon}&appid={APIKEY}"
-//api info: https://openweathermap.org/api/air-pollution
 
 
-/* TODO add covid data retrieval in general & also check generalization of links below
+/* TODO add covid data retrieval in general & also check generalization of template links below
  * 1) ALL days... no data logged on sundays https://api.covidactnow.org/v2/cbsa/{CBSA_ID}.timeseries.json?apiKey={COVID_API_KEY}
  * 2) can specify dates, smaller returned data, but need to do more math, and less documentation. also no sunday data for some counties https://api.covid19tracking.narrativa.com/api/country/{COUNTRY}/region/{STATE}/sub_region/{COUNTY}?date_from=2021-04-18&date_to=2021-04-20
  */
 
+//CVOID data: https://api.covid19tracking.narrativa.com
 #define URL_covid_base "https://api.covid19tracking.narrativa.com/api/country/{COUNTRY}/region/{STATE}/sub_region/{COUNTY}?" //date_from=2021-04-18&date_to=2021-04-20
+
+
+//Trello: https://developer.atlassian.com/cloud/trello/guides/rest-api/api-introduction/
+#define URL_trello_cards "https://api.trello.com/1/lists/{LIST_ID}/cards?fields=name&key={KEY}&token={TOKEN}"
+
+/* How To Get Names of All Cards in One List on One Board:
+* get your own key and then manually generate a token on: https://trello.com/app-key (you have to be logged in. otherwise you see a taco error)
+* Use API call to get your boards
+*
+* boards: https://api.trello.com/1/members/me/boards?fields=name&key={KEY}&token={TOKEN}
+* This will return json:
+[
+ {
+   "name": "BOARD_NAME",
+   "id": "BOARD_ID"
+ },
+ ...
+]
+* use BOARD_ID in next API call to get list names and IDs (only these two are specified in API call)
+* Lists on a board: https://api.trello.com/1/boards/{BOARD_ID}/lists?fields=name&key={KEY}&token={TOKEN}
+* This will return json:
+ * [
+  {
+    "id": "LIST_ID",
+    "name": "Tasks"
+  },
+* then use LIST_ID in next API call to get data on the cards in that list
+* get only the names of the card  in list: https://api.trello.com/1/lists/{LIST_ID}/cards?fields=name&key={KEY}&token={TOKEN}
+* get all data for cards in list: https://api.trello.com/1/lists/{LIST_ID}/cards?key={KEY}&token={TOKEN}
+* then use either of these calls as the URL_trello_cards value above. Current data display functions will only return names though.
+*/
