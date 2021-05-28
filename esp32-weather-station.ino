@@ -57,6 +57,13 @@ Weather News    57.78%
  *  [D][HTTPClient.cpp:947] getString(): not enough memory to reserve a string! need: 17987
  *  Parsing input failed!
  *  [D][HTTPClient.cpp:378] disconnect(): still data in buffer (5368), clean up.
+ *  https://cjson.docsforge.com/master/api/cJSON_free/
+ *  /* Memory Management: the caller is always responsible to free the results from all variants of cJSON_Parse (with cJSON_Delete) and cJSON_Print (with stdlib free, cJSON_Hooks.free_fn, or cJSON_free as appropriate). The exception is cJSON_PrintPreallocated, where the caller has full responsibility of the buffer.
+ *  
+ *  void JSON_free(void* ptr)
+ *  
+ *  i think just JSON.parse("{}"); after you're done with data works?
+ *  
 */
 
    
@@ -65,6 +72,7 @@ Weather News    57.78%
 #include <WiFi.h>
 #include <HTTPClient.h>
 #include <Arduino_JSON.h> //QUESTION: any benefit to using ArduinoJson library here instead?
+//#include "cjson/cJSON.h"
 JSONVar jsonWeather;
 
 JSONVar jsonResult;
@@ -574,6 +582,7 @@ boolean getDataWrapper(String data_source, int connectWifiTries, int getDataTrie
             Serial.println("dataSuccess weather if");
           }
           fillWeatherFromJson(&weather_data); //weather.h
+          jsonResult = JSON.parse("{}");        
         } else if ( data_source == "pollution") {
           if (debugSerial) {
             Serial.println("dataSuccess pollution if");
@@ -591,6 +600,7 @@ boolean getDataWrapper(String data_source, int connectWifiTries, int getDataTrie
             Serial.println("dataSuccess default else");
           }
           fillWeatherFromJson(&weather_data); //weather.h
+          jsonResult = JSON.parse("{}");
         }
         
       } else {
