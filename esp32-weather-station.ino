@@ -17,7 +17,6 @@
 */
 
 //TODO
-//todo add air pollution, pm2.5 (or10?) for smoke season https://openweathermap.org/api/air-pollution
 //todo add covid data (see parameters.h)
 //TODO better differentiate get or parse data failures? But not sure if I would do anything different with different failures...
 //TODO save data to SD card?
@@ -25,9 +24,11 @@
 //TODO move led display code to display-led.h
 //TODO hourly temp doesnt give much more info. use daily-timeframe temps instead?
 //TODO buttons to display diff data - random trello card(1), tomorrow weather. covid? pollution?
-/*TODO display pollution and allergy levels as 15x1-2 pixel bars at bottom of screen. 
- * red yellow green bars as according to data/apis. 
- * a physical button would then pop up a 15 x 8 pixel box all same color as data color with black text to show number, disappear after.... 30 seconds?
+//TODO button for new random trello card - first display random card scroll text, then usual first, random text (so less waiting for new data to display)
+/*TODO 
+ * x- display pollution and allergy levels as 15x1-2 pixel bars at bottom of screen. 
+ * x- red yellow green bars as according to data/apis. 
+ * - a physical button would then pop up a 15 x 8 pixel box all same color as data color with black text to show number, disappear after.... 30 seconds?
  */
 
 
@@ -93,10 +94,17 @@ uint64_t sleepTime = MINUTE;
 Weather weather_data;
 
 
+//pollution stuff
+#include "pollution.h";
+Pollution pollution_data;
+
+
 //trello stuff
 #include "trello.h";
 char trelloCardNameFirst[30];
 char trelloCardNameRandom[30];//ugh, ugly hack
+
+
 //LED Matrix & RTC stuff
 #include "RTClib.h"
 #include <MatrixHardware_ESP32_V0.h>
@@ -117,6 +125,12 @@ SMARTMATRIX_ALLOCATE_INDEXED_LAYER(indexedLayer1, kMatrixWidth, kMatrixHeight, C
 SMARTMATRIX_ALLOCATE_INDEXED_LAYER(indexedLayer2, kMatrixWidth, kMatrixHeight, COLOR_DEPTH, kIndexedLayerOptions);
 SMARTMATRIX_ALLOCATE_INDEXED_LAYER(indexedLayer3, kMatrixWidth, kMatrixHeight, COLOR_DEPTH, kIndexedLayerOptions);
 SMARTMATRIX_ALLOCATE_SCROLLING_LAYER(scrollingLayer, kMatrixWidth, kMatrixHeight, COLOR_DEPTH, kScrollingLayerOptions);
+SMARTMATRIX_ALLOCATE_INDEXED_LAYER(indexedLayerAQI, kMatrixWidth, kMatrixHeight, COLOR_DEPTH, kIndexedLayerOptions); //color rectangles for pollution (over scrolling text)
+SMARTMATRIX_ALLOCATE_INDEXED_LAYER(indexedLayerPM25, kMatrixWidth, kMatrixHeight, COLOR_DEPTH, kIndexedLayerOptions); //color rectangles for pollution (over scrolling text)
+SMARTMATRIX_ALLOCATE_INDEXED_LAYER(indexedLayerPM10, kMatrixWidth, kMatrixHeight, COLOR_DEPTH, kIndexedLayerOptions); //color rectangles for pollution (over scrolling text)
+
+SMARTMATRIX_ALLOCATE_INDEXED_LAYER(indexedLayer5, kMatrixWidth, kMatrixHeight, COLOR_DEPTH, kIndexedLayerOptions); //layer for pollution numbers
+
 
 RTC_DS1307 rtc;
 const int defaultBrightness = (35*255)/100;     // dim: 35% brightness
@@ -181,6 +195,11 @@ void setup() {
   matrix.addLayer(&indexedLayer2);
   matrix.addLayer(&indexedLayer3);
   matrix.addLayer(&scrollingLayer);
+  matrix.addLayer(&indexedLayerAQI);
+  matrix.addLayer(&indexedLayerPM25);
+  matrix.addLayer(&indexedLayerPM10);
+  matrix.addLayer(&indexedLayer5);
+  
   matrix.begin();
   
   matrix.setBrightness(defaultBrightness);
@@ -201,6 +220,16 @@ void setup() {
   indexedLayer3.setIndexedColor(1,{0x00, 0x00, 0xff});
   indexedLayer3.drawString(0, 13, 1, "Initializing");
   indexedLayer3.swapBuffers();
+
+
+  //Pollution Intialize message
+  indexedLayer5.fillScreen(0);
+  
+  indexedLayer5.setFont(font3x5);
+  indexedLayer5.setIndexedColor(1,{0x00, 0x00, 0xff});
+  indexedLayer5.drawString(0, 25, 1, "Getting Air Qual...");
+  indexedLayer5.swapBuffers();
+
   
   Serial.println("DS1307RTC Test");
   if (rtc.begin()) {
@@ -265,7 +294,29 @@ void setup() {
     indexedLayer3.swapBuffers();
   }
 
-  
+
+  //get Pollution data at startup
+  bool dataWrapperPollutionSuccess = getDataWrapper("pollution", 5, 3); //try connecting to wifi 5 times, getting data thrice
+  if (debugSerial && dataWrapperPollutionSuccess) {
+    Serial.println("Succesfully got pollution data");
+      printPollutionDebug(&pollution_data);
+  } else if (debugSerial && !dataWrapperPollutionSuccess) {
+    Serial.println("ERROR: Did not retrieve pollution data.");
+  }  
+
+  //Display pollution Data
+  if (dataWrapperPollutionSuccess) {
+    displayPollution(&pollution_data, true);
+  } else {
+    //maybe don't display error here, as then logic is complicated for erasing or keeping after trello data gotten
+//    indexedLayer5.fillScreen(0);
+//    
+//    indexedLayer5.setFont(font3x5);
+//    indexedLayer5.setIndexedColor(1,{0x00, 0x00, 0xff});
+//    indexedLayer5.drawString(0, 25, 1, "Failed to get pollution");
+//    indexedLayer5.swapBuffers();
+  }
+
   bool dataWrapperTrelloSuccess = getDataWrapper("trello_cards", 5, 3); //try connecting to wifi 5 times, getting data thrice
   if (debugSerial && dataWrapperTrelloSuccess) {
     Serial.println("Succesfully got trello data");
@@ -278,7 +329,10 @@ void setup() {
     displayTrelloCards();
   }
 
-
+  //wait 20 seconds
+  delay(20*1000);
+  //then "minimize" pollution data
+  displayPollution(&pollution_data, false);
   
 //  disconnectFromWifi(); //TODO do we want to explicitly disconnect from wifi between updates? chip heat savings?
 }
@@ -334,6 +388,21 @@ void loop() {
 
     //update time - later maybe break out to own interval?
     bool timesMatched = verifyTime();
+
+
+    //get Pollution data
+    bool dataWrapperPollutionSuccess = getDataWrapper("pollution");
+    if (debugSerial && dataWrapperPollutionSuccess) {
+      Serial.println("Succesfully got pollution data");
+        printPollutionDebug(&pollution_data);
+    } else if (debugSerial && !dataWrapperPollutionSuccess) {
+      Serial.println("ERROR: Did not retrieve pollution data.");
+    }  
+  
+    //Display pollution Data
+    if (dataWrapperPollutionSuccess) {
+      displayPollution(&pollution_data, false);
+    }
 
     bool dataWrapperTrelloSuccess = getDataWrapper("trello_cards");
     if (debugSerial && dataWrapperSuccess) {
@@ -539,6 +608,225 @@ void displayWeather(Weather* weather_data) {
   indexedLayer3.drawString(0, 16, 1, txtBuffer);
   indexedLayer3.swapBuffers();
 }
+
+
+void displayPollution(Pollution* pollution_data, bool showValue) {
+  indexedLayerAQI.fillScreen(0);
+  indexedLayerPM25.fillScreen(0);
+  indexedLayerPM10.fillScreen(0);
+  indexedLayer5.fillScreen(0);
+  indexedLayer5.setIndexedColor(1,{0, 0, 0});
+
+  // Air Quality Index. Possible values: 1, 2, 3, 4, 5. Where 1 = Good, 2 = Fair, 3 = Moderate, 4 = Poor, 5 = Very Poor.
+  //rgb24 is of course in {red, blue, green} order
+  if ( atoi(pollution_data->aqi) == 1 ) {
+    if (debugSerial) {
+      Serial.println("Debug: AQI good");
+    }
+    indexedLayerAQI.setIndexedColor(1, {0, 0, 0xff}); //green
+  } else if ( atoi(pollution_data->aqi) == 2 ) {
+    if (debugSerial) {
+      Serial.println("Debug: AQI fair");
+    }
+    indexedLayerAQI.setIndexedColor(1, {0, 0, 0x80}); //dull green
+  } else if ( atoi(pollution_data->aqi) == 3 ) {
+    if (debugSerial) {
+      Serial.println("Debug: AQI moderate");
+    }
+    indexedLayerAQI.setIndexedColor(1, {0xff, 0x66, 0xff}); //yellow
+  } else if ( atoi(pollution_data->aqi) == 4 ) {
+    if (debugSerial) {
+      Serial.println("Debug: AQI poor");
+    }
+    indexedLayerAQI.setIndexedColor(1, {0x80, 0, 0}); //dull red   
+  } else {
+    if (debugSerial) {
+      Serial.println("Debug: AQI very poor");
+    }
+    indexedLayerAQI.setIndexedColor(1, {0xff, 0, 0}); //bright red
+  }
+  
+  int xStartAQI = 0;
+  int xWidthAQI = 10; //default to just small color bar
+  int yStartAQI = 30; //default to just small color bar
+  
+  if ( showValue ) {
+    yStartAQI = 24;
+  } 
+//  else {
+//    int yStart = 30;
+//  }
+
+  for ( int x = xStartAQI; x < xStartAQI+xWidthAQI; x++ ) {
+    for ( int y = yStartAQI; y < 32; y++ ) {
+      indexedLayerAQI.drawPixel(x, y, 1);
+    }
+  }
+  indexedLayerAQI.swapBuffers();
+
+  if ( showValue ) {
+    indexedLayer5.setFont(font5x7);
+    indexedLayer5.drawString(xStartAQI+3, 25, 1, pollution_data->aqi);
+    indexedLayer5.swapBuffers();
+  }
+
+  //pm2_5
+  //good 15, moderate 40, unhealth sensitive 65, unhealthy 150, very unhealthy 250, hazardous 500 https://aqicn.org/faq/2013-09-09/revised-pm25-aqi-breakpoints/
+  //or https://www.airnow.gov/sites/default/files/2020-05/aqi-technical-assistance-document-sept2018.pdf
+  //good 12, moderate 35.5, unhealth sensitive 55.5, unhealthy 150.5, very unhealthy 250.5, hazardous 500.5
+
+
+  //TEST TEST
+//  sprintf(pollution_data->pm2_5, "%.2f",  (double) 55 );
+
+  //rgb24 is of course in {red, blue, green} order
+  if ( atoi(pollution_data->pm2_5) < 4 ) {
+    if (debugSerial) {
+      Serial.println("Debug: PM25 good");
+    }
+    indexedLayerPM25.setIndexedColor(1, {0, 0, 0xff}); //green
+  } else if ( atoi(pollution_data->pm2_5) < 40 ) {
+    if (debugSerial) {
+      Serial.println("Debug: PM25 moderate");
+    }
+    indexedLayerPM25.setIndexedColor(1, {0, 0, 0x80}); //dull green
+  } else if ( atoi(pollution_data->pm2_5) < 65 ) {
+    if (debugSerial) {
+      Serial.println("Debug: PM25 unhealthy for sensitive");
+    }
+    indexedLayerPM25.setIndexedColor(1, {0xff, 0x66, 0xff}); //yellow
+  } else if ( atoi(pollution_data->pm2_5) < 150 ) {
+    if (debugSerial) {
+      Serial.println("Debug: PM25 unhealthy");
+    }
+    indexedLayerPM25.setIndexedColor(1, {0xff, 0x66, 0xff}); //yellow
+  } else if ( atoi(pollution_data->pm2_5) < 250 ) {
+    if (debugSerial) {
+      Serial.println("Debug: PM25 very unhealthy");
+    }
+    indexedLayerPM25.setIndexedColor(1, {0x80, 0, 0}); //dull red   
+  } else { //< 500
+    if (debugSerial) {
+      Serial.println("Debug: PM25 hazardous");
+    }
+    indexedLayerPM25.setIndexedColor(1, {0xff, 0, 0}); //bright red
+  }
+  
+  int xStartPM25 = xWidthAQI + 2; 
+  int xWidthPM25 = 10; //default to just small color bar
+  if ( atoi(pollution_data->pm2_5) < 10 ) {
+    //don't change bar width
+  } else if ( atoi(pollution_data->pm2_5) < 100 ) {
+    xWidthPM25 = 15; //2*5char + 2 on each side + 1
+  } else if ( atoi(pollution_data->pm2_5) < 1000 ) {
+    xWidthPM25 = 21; //3*5char + 2 on each side
+  } else {
+    //huh?
+  }
+  
+  int yStartPM25 = 30; //default to just small color bar
+  
+  if ( showValue ) {
+    yStartPM25 = 24;
+  } 
+//  else {
+//    int yStart = 30;
+//  }
+
+  for ( int x = xStartPM25; x < xStartPM25+xWidthPM25; x++ ) {
+    for ( int y = yStartPM25; y < 32; y++ ) {
+      indexedLayerPM25.drawPixel(x, y, 1);
+    }
+  }
+  indexedLayerPM25.swapBuffers();
+
+  if ( showValue ) {
+    char pm25Temp[4];
+    sprintf(pm25Temp, "%i", atoi(pollution_data->pm2_5));
+
+    indexedLayer5.setFont(font5x7);
+    indexedLayer5.drawString(xStartPM25+3, 25, 1, pm25Temp);
+    indexedLayer5.swapBuffers();
+  }
+
+  //pm10
+  //good 54, moderate 154, unhealth sensitive 254, unhealthy 354, very unhealthy 424, hazardous 604
+
+  //TEST TEST
+//  sprintf(pollution_data->pm2_5, "%.2f",  (double) 55 );
+
+  //rgb24 is of course in {red, blue, green} order
+  if ( atoi(pollution_data->pm10) < 54 ) {
+    if (debugSerial) {
+      Serial.println("Debug: PM10 good");
+    }
+    indexedLayerPM10.setIndexedColor(1, {0, 0, 0xff}); //green
+  } else if ( atoi(pollution_data->pm10) < 154 ) {
+    if (debugSerial) {
+      Serial.println("Debug: PM10 moderate");
+    }
+    indexedLayerPM10.setIndexedColor(1, {0, 0, 0x80}); //dull green
+  } else if ( atoi(pollution_data->pm10) < 254 ) {
+    if (debugSerial) {
+      Serial.println("Debug: PM10 unhealthy for sensitive");
+    }
+    indexedLayerPM10.setIndexedColor(1, {0xff, 0x66, 0xff}); //yellow
+  } else if ( atoi(pollution_data->pm10) < 354 ) {
+    if (debugSerial) {
+      Serial.println("Debug: PM10 unhealthy");
+    }
+    indexedLayerPM10.setIndexedColor(1, {0xff, 0x66, 0xff}); //yellow
+  } else if ( atoi(pollution_data->pm10) < 424 ) {
+    if (debugSerial) {
+      Serial.println("Debug: PM10 very unhealthy");
+    }
+    indexedLayerPM10.setIndexedColor(1, {0x80, 0, 0}); //dull red   
+  } else { //< 500
+    if (debugSerial) {
+      Serial.println("Debug: PM10 hazardous");
+    }
+    indexedLayerPM10.setIndexedColor(1, {0xff, 0, 0}); //bright red
+  }
+  
+  int xStartPM10 = xWidthAQI + 2 + xWidthPM25 + 2;
+  int xWidthPM10 = 10; //default to just small color bar
+  if ( atoi(pollution_data->pm10) < 10 ) {
+    //don't change bar width
+  } else if ( atoi(pollution_data->pm10) < 100 ) {
+    xWidthPM10 = 15; //2*5char + 2 on each side + 1
+  } else if ( atoi(pollution_data->pm10) < 1000 ) {
+    xWidthPM10 = 21; //3*5char + 2 on each side
+  } else {
+    //huh?
+  }
+  
+  int yStartPM10 = 30; //default to just small color bar
+  
+  if ( showValue ) {
+    yStartPM10 = 24;
+  } 
+//  else {
+//    int yStart = 30;
+//  }
+
+  for ( int x = xStartPM10; x < xStartPM10+xWidthPM10; x++ ) {
+    for ( int y = yStartPM10; y < 32; y++ ) {
+      indexedLayerPM10.drawPixel(x, y, 1);
+    }
+  }
+  indexedLayerPM10.swapBuffers();
+
+  if ( showValue ) {
+    char PM10Temp[4];
+    sprintf(PM10Temp, "%i", atoi(pollution_data->pm10));
+
+    indexedLayer5.setFont(font5x7);
+    indexedLayer5.drawString(xStartPM10+3, 25, 1, PM10Temp);
+    indexedLayer5.swapBuffers();
+  }
+
+  indexedLayer5.swapBuffers();
+}
 void displayTrelloCards() {
   
     scrollingLayer.setMode(wrapForward);
@@ -689,10 +977,12 @@ boolean getDataWrapper(String data_source, int connectWifiTries, int getDataTrie
           jsonResult = JSON.parse("{}");        
         } else if ( data_source == "pollution") {
           if (debugSerial) {
-            Serial.println("dataSuccess pollution if");
+            Serial.println("Debug: dataSuccess pollution if");
           }
-          Serial.println("Pollution data storage not yet implemented.");
-//          fillPollutionFromJson(&pollution_data); //weather.h
+//          Serial.println("Pollution data storage not yet implemented.");
+          fillPollutionFromJson(&pollution_data); //pollution.h
+          //TODO Check for fill success?
+          jsonResult = JSON.parse("{}");    
         } else if ( data_source == "covid") {
           if (debugSerial) {
             Serial.println("dataSuccess covid if");
