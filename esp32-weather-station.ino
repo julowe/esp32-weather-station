@@ -263,12 +263,12 @@ void setup() {
   //get weather data at startup
   bool dataWrapperSuccess = getDataWrapper("weather", 5, 3); //try connecting to wifi 5 times, getting data thrice
 
-    if (debugSerial && dataWrapperSuccess) {
-      Serial.println("Succesfully got weather data");
-//      printWeatherDebug(&weather_data);
-    } else if (debugSerial && !dataWrapperSuccess) {
-      Serial.println("ERROR: Did not retrieve weather data.");
-    }  
+  if (debugSerial && dataWrapperSuccess) {
+    Serial.println("Succesfully got weather data");
+    printWeatherDebug(&weather_data);
+  } else if (debugSerial && !dataWrapperSuccess) {
+    Serial.println("ERROR: Did not retrieve weather data.");
+  }  
 
   //Display Weather Data
   if (dataWrapperSuccess) {
