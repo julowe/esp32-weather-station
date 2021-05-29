@@ -589,16 +589,18 @@ void displayWeather(Weather* weather_data) {
    *  word weather description
    */
   char txtBuffer[20];
+  //weather description in words
   indexedLayer2.fillScreen(0);
-  indexedLayer3.fillScreen(0);
-  
-//  indexedLayer2.setFont(font8x13);
+
   indexedLayer2.setFont(font5x7);
   indexedLayer2.setIndexedColor(1,{0x00, 0xff, 0x00});
   indexedLayer2.drawString(0, 8, 1, weather_data->descriptionC);
   indexedLayer2.swapBuffers();
 
-  int pop1Temp = atof(weather_data->popH1)*100;
+  //weather in numbers
+  indexedLayer3.fillScreen(0);
+  int pop0Temp = atof(weather_data->popH0)*100;
+//  int pop1Temp = atof(weather_data->popH1)*100;
 //  sprintf(txtBuffer, "%s %s", weather_data->tempC, weather_data->tempH1);
   sprintf(txtBuffer, "%s %s %i%%", weather_data->tempC, weather_data->tempH1, pop1Temp);
 //  sprintf(txtBuffer, "%s %s %3i%% %3i%%", weather_data->tempC, weather_data->tempH1, atof(weather_data->popH1)*100, atof(weather_data->popH4)*100);
