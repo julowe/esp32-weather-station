@@ -399,14 +399,14 @@ void loop() {
 
     //get trello data
     bool dataWrapperTrelloSuccess = getDataWrapper("trello_cards");
-    if (debugSerial && dataWrapperSuccess) {
-      Serial.println("Succesfully got trello data");
-    } else if (debugSerial && !dataWrapperSuccess) {
+    if (debugSerial && dataWrapperTrelloSuccess) {
+      Serial.println("Debug: Succesfully got trello data");
+    } else if (debugSerial && !dataWrapperTrelloSuccess) {
       Serial.println("ERROR: Did not retrieve trello data.");
     }  
   
     //Display Trello Data
-    if (dataWrapperSuccess) {
+    if (dataWrapperTrelloSuccess) {
       displayTrelloCards();
     }
   
