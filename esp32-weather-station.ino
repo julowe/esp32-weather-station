@@ -831,9 +831,9 @@ void displayPollution(Pollution* pollution_data, bool showValue) {
 void displayTrelloCards() {
   
     scrollingLayer.setMode(wrapForward);
-    scrollingLayer.setOffsetFromTop(24);
+    scrollingLayer.setOffsetFromTop(23);
 //    scrollingLayer.setSpeed(10);
-    scrollingLayer.setSpeed(15);
+    scrollingLayer.setSpeed(16);
     scrollingLayer.setFont(font5x7);
     scrollingLayer.setColor({0xff,0xff,0xff});
 //    String message = "First: " + trelloCardNameFirst;// + "& Random: " + trelloCardNameRandom;
