@@ -48,11 +48,12 @@ struct Weather {
   char humidityD1[6];
 
   //Current time returned in json data
-  char updated[20];
+//  int updated[20];
+  int updated;
 };
 
 void fillWeatherFromJson(Weather* weather_data) {
-
+        
   //current
   sprintf(weather_data->descriptionC, "%s", (const char*) jsonResult["current"]["weather"][0]["description"]);
   sprintf(weather_data->descriptionShortC, "%s", (const char*) jsonResult["current"]["weather"][0]["main"]);
@@ -117,7 +118,9 @@ void fillWeatherFromJson(Weather* weather_data) {
 //  int timezone_offset = (int) jsonResult["timezone_offset"]; //set above already
   int dt = (int) jsonResult["current"]["dt"];
   int t = dt + timezone_offset;
-  sprintf(weather_data->updated, "MAJ : %02d/%02d %02d:%02d", day(t), month(t), hour(t), minute(t));
+//  sprintf(weather_data->updated, "MAJ : %02d/%02d %02d:%02d", day(t), month(t), hour(t), minute(t));
+  weather_data->updated = t ;
+  
 }
 
 
@@ -203,6 +206,15 @@ void printWeatherDebug(Weather* weather_data) {
 
   //current time from json data
   Serial.print("Updated at: ");
-  Serial.println(weather_data->updated);
+//  Serial.println(weather_data->updated);
+  Serial.print(year(weather_data->updated));
+  Serial.print("-");
+  Serial.print(month(weather_data->updated));
+  Serial.print("-");
+  Serial.print(day(weather_data->updated));
+  Serial.print(" ");
+  Serial.print(hour(weather_data->updated));
+  Serial.print(":");
+  Serial.println(minute(weather_data->updated));
 
 }
