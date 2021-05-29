@@ -54,19 +54,6 @@ Weather News    57.78%
  *  
  */
 
-/* TODO Fix out of memory httpclient.getstring() error. Or just keep letting it retrieve it twice?
- *  [D][HTTPClient.cpp:947] getString(): not enough memory to reserve a string! need: 17987
- *  Parsing input failed!
- *  [D][HTTPClient.cpp:378] disconnect(): still data in buffer (5368), clean up.
- *  https://cjson.docsforge.com/master/api/cJSON_free/
- *  /* Memory Management: the caller is always responsible to free the results from all variants of cJSON_Parse (with cJSON_Delete) and cJSON_Print (with stdlib free, cJSON_Hooks.free_fn, or cJSON_free as appropriate). The exception is cJSON_PrintPreallocated, where the caller has full responsibility of the buffer.
- *  
- *  void JSON_free(void* ptr)
- *  
- *  i think just JSON.parse("{}"); after you're done with data works?
- *  
-*/
-
    
 //Data retrieval stuff
 #include <Time.h>
@@ -74,12 +61,11 @@ Weather News    57.78%
 #include <HTTPClient.h>
 #include <Arduino_JSON.h> //QUESTION: any benefit to using ArduinoJson library here instead?
 //#include "cjson/cJSON.h"
-JSONVar jsonWeather;
 
 JSONVar jsonResult;
 
 #include "parameters.h"
-#include "weather.h"
+
 //#include "display.h" //TODO - use weather icons from this file
 //#include "display-led.h"
 #include "network.h"
@@ -90,6 +76,9 @@ const uint64_t HOUR = 60 * MINUTE;
 const uint64_t MICRO_SEC_TO_MILLI_SEC_FACTOR = 1000;
 uint64_t sleepTime = MINUTE;
 
+
+//weather stuff
+#include "weather.h"
 //declare struct for weather data to be put in
 Weather weather_data;
 
@@ -213,12 +202,12 @@ void setup() {
   indexedLayer1.drawString(0, 0, 1, "Checking Time...");
   indexedLayer1.swapBuffers();
 
-  //General Intialize message
+  //Weather Intialize message
   indexedLayer3.fillScreen(0);
   
   indexedLayer3.setFont(font3x5);
   indexedLayer3.setIndexedColor(1,{0x00, 0x00, 0xff});
-  indexedLayer3.drawString(0, 13, 1, "Initializing");
+  indexedLayer3.drawString(0, 16, 1, "Getting Weather...");
   indexedLayer3.swapBuffers();
 
 
@@ -270,6 +259,7 @@ void setup() {
 
   displayClock();
 
+
   //get weather data at startup
   bool dataWrapperSuccess = getDataWrapper("weather", 5, 3); //try connecting to wifi 5 times, getting data thrice
 
@@ -280,8 +270,7 @@ void setup() {
       Serial.println("ERROR: Did not retrieve weather data.");
     }  
 
-    
-  //Display Data
+  //Display Weather Data
   if (dataWrapperSuccess) {
     displayWeather(&weather_data);
   } else {
@@ -317,6 +306,8 @@ void setup() {
 //    indexedLayer5.swapBuffers();
   }
 
+
+  //get Trello data at startup
   bool dataWrapperTrelloSuccess = getDataWrapper("trello_cards", 5, 3); //try connecting to wifi 5 times, getting data thrice
   if (debugSerial && dataWrapperTrelloSuccess) {
     Serial.println("Succesfully got trello data");
@@ -334,8 +325,9 @@ void setup() {
   //then "minimize" pollution data
   displayPollution(&pollution_data, false);
   
-//  disconnectFromWifi(); //TODO do we want to explicitly disconnect from wifi between updates? chip heat savings?
+//  disconnectFromWifi(); //TODO do we want to explicitly disconnect from wifi between updates for any reason? chip heat savings?
 }
+
 
 void loop() {
   bool dataWrapperSuccess = false;
@@ -348,7 +340,7 @@ void loop() {
   
   if (now.minute() % weatherUpdateInterval == 0){ // update every `weatherUpdateInterval`-th mins
     if (debugSerial) {
-      Serial.print("Updating weather because it is a ");
+      Serial.print("Debug: Updating weather because it is a ");
       Serial.print(weatherUpdateInterval);
       Serial.print(" minute mark, time is: ");
       Serial.print(now.hour());
@@ -357,10 +349,11 @@ void loop() {
 //      Serial.println(now.minute());
     }
 
+    //get weather data (default function value)
     dataWrapperSuccess = getDataWrapper();
     
     if (debugSerial && dataWrapperSuccess) {
-      Serial.println("Succesfully got weather data");
+      Serial.println("Debug: Succesfully got weather data");
       printWeatherDebug(&weather_data);
     } else if (debugSerial && !dataWrapperSuccess) {
       Serial.println("ERROR: Did not retrieve weather data.");
@@ -372,7 +365,7 @@ void loop() {
       displayWeather(&weather_data);
     } else {
       if (debugSerial) {
-        Serial.println("Updating matrix with failure message");
+        Serial.println("Debug: Updating matrix with failure message");
       }
       //TODO display anything different here? or just leave old data up? update 'last updated' layer only?
 
@@ -404,6 +397,7 @@ void loop() {
       displayPollution(&pollution_data, false);
     }
 
+    //get trello data
     bool dataWrapperTrelloSuccess = getDataWrapper("trello_cards");
     if (debugSerial && dataWrapperSuccess) {
       Serial.println("Succesfully got trello data");
@@ -419,7 +413,7 @@ void loop() {
   
   } else {
     if (debugSerial) {
-      Serial.print("NOT updating weather because it is NOT ");
+      Serial.print("Debug: NOT updating weather because it is NOT ");
       Serial.print(weatherUpdateInterval);
       Serial.print(" minute mark, minute = ");
       print2digitsLn(now.minute());
@@ -428,10 +422,10 @@ void loop() {
   }
 
 
-//  if (now.hour() % covidUpdateInterval == 0 && now.minute() == 0){ // update every Xth hours
-  if (now.hour() % covidUpdateInterval == 0){ // update every Xth hours
+  if (now.hour() % covidUpdateInterval == 0 && now.minute() == 0){ // update every Xth hours
+//  if (now.hour() % covidUpdateInterval == 0){ // update every Xth hours and any minute - for debugging!
     if (debugSerial) {
-      Serial.print("Updating covid data because it is a ");
+      Serial.print("Debug: Updating covid data because it is a ");
       Serial.print(covidUpdateInterval);
       Serial.print(" hour mark, time is: ");
       Serial.print(now.hour());
@@ -448,7 +442,7 @@ void loop() {
     dataWrapperSuccess = getDataWrapper("covid");
     
     if (debugSerial && dataWrapperSuccess) {
-      Serial.println("Succesfully got covid data");
+      Serial.println("Debug: Succesfully got covid data");
 //      printCovidDebug(&weather_data); //TODO make covid data display debug
     } else if (debugSerial && !dataWrapperSuccess) {
       Serial.println("ERROR: Did not retrieve covid data.");
@@ -461,7 +455,7 @@ void loop() {
     } else {
       if (debugSerial) {
 //        Serial.println("Updating matrix with failure message");
-        Serial.println("Not changing led display as displaying covid data is a work in progress.");
+        Serial.println("Debug: Not changing led display as displaying covid data is a work in progress.");
       }
       //TODO display anything different here? or just leave old data up? update 'last updated' layer only?
       
@@ -476,7 +470,7 @@ void loop() {
      
   } else {
     if (debugSerial) {
-      Serial.print("NOT updating covid data because it is NOT ");
+      Serial.print("Debug: NOT updating covid data because it is NOT ");
       Serial.print(covidUpdateInterval);
       Serial.print(" hour mark, time is: ");
       Serial.print(now.hour());
@@ -486,9 +480,6 @@ void loop() {
     }
   }
 
-
-
-//////////////////////////////////////////////
   displayClock();
 
   //delay updates/actions
@@ -509,7 +500,7 @@ void loop() {
 
 void sleep(uint64_t sleepTime) {
   if (debugSerial) {
-    Serial.print("Sleeping for ");
+    Serial.print("Debug: Sleeping for ");
     Serial.print(sleepTime/1000);
     Serial.println(" seconds.");
   }
@@ -524,6 +515,14 @@ void sleep(uint64_t sleepTime) {
   delay(sleepTime/60);
 }
 
+
+/*************************
+ *                       *
+ *    Display Functions  *
+ *                       *
+ *************************/
+
+ 
 void displayClock() {
   DateTime now = rtc.now();
   char txtBuffer[20];
@@ -861,7 +860,6 @@ void displayTestScroll() {
 }
 
 
-
 void print_wakeup_reason(){
   esp_sleep_wakeup_cause_t wakeup_reason;
   wakeup_reason = esp_sleep_get_wakeup_cause();
@@ -890,6 +888,14 @@ void print2digitsLn(int number) {
 }
 
 
+
+/**************************
+ *                        *
+ *    Get Data Functions  *
+ *                        *
+ **************************/
+ 
+ 
 boolean getDataWrapper(String data_source, int connectWifiTries, int getDataTries) {
   bool dataSuccess = false;
   int connectWifiTrialNumber = 1;
@@ -920,7 +926,7 @@ boolean getDataWrapper(String data_source, int connectWifiTries, int getDataTrie
 
   if (connectWifiTrialNumber == 1 && WiFi.status() == WL_CONNECTED) {
     if (debugSerial) {
-      Serial.println("Already connected to wifi.");
+      Serial.println("Debug: Already connected to wifi.");
     }
   }
   //end TODO above
@@ -931,37 +937,38 @@ boolean getDataWrapper(String data_source, int connectWifiTries, int getDataTrie
     Serial.print(getDataTrialNumber);
     Serial.print("/");
     Serial.print(getDataTries);
-    Serial.print(" for ");
-    
-    Serial.println("retrieving data...");
+    Serial.print(" for retrieving ");
+    Serial.print(data_source);    
+    Serial.println(" data...");
     
     //connect to wifi
     if (WiFi.status() == WL_CONNECTED) {
 
       if ( data_source == "weather") {
         if (debugSerial) {
-          Serial.println("weather if");
+          Serial.println("Debug: weather if");
         }
+        //TODO split this into two get calls (hourly & daily) if memory becomes an issue
         dataSuccess = getJSON(URL_weather);
       } else if ( data_source == "pollution") {
         if (debugSerial) {
-          Serial.println("pollution if");
+          Serial.println("Debug: pollution if");
         }
         dataSuccess = getJSON(URL_pollution);
       } else if ( data_source == "covid") {
         if (debugSerial) {
-          Serial.println("covid if");
+          Serial.println("Debug: covid if");
         }
         Serial.println("Covid data retrieval not yet implemented.");
 //        dataSuccess = getJSON(URL_covid_base);
       } else if ( data_source == "trello_cards") {
         if (debugSerial) {
-          Serial.println("trello if");
+          Serial.println("Debug: trello if");
         }
         dataSuccess = getJSON(URL_trello_cards);
       } else {
         if (debugSerial) {
-          Serial.println("default else");
+          Serial.println("Debug: default else");
         }
         dataSuccess = getJSON(URL_weather);
       }
@@ -985,26 +992,28 @@ boolean getDataWrapper(String data_source, int connectWifiTries, int getDataTrie
           jsonResult = JSON.parse("{}");    
         } else if ( data_source == "covid") {
           if (debugSerial) {
-            Serial.println("dataSuccess covid if");
+            Serial.println("Debug: dataSuccess covid if");
           }
           Serial.println("Covid data storage not yet implemented.");
 //          fillCovidDataFromJson(&covid_data); //weather.h
         } else if ( data_source == "trello_cards") {
           if (debugSerial) {
-            Serial.println("dataSuccess trello if");
+            Serial.println("Debug: dataSuccess trello if");
           }       
           trelloFirstCard(trelloCardNameFirst);
           trelloRandomCard(trelloCardNameRandom);
           
           if (debugSerial) {
-            Serial.println(trelloCardNameFirst);
+            Serial.print("Debug: First card name: ");
+            Serial.print(trelloCardNameFirst);
+            Serial.print(", Second card name: ");
             Serial.println(trelloCardNameRandom);
           }
           //TODO Check for fill success?
           jsonResult = JSON.parse("{}");        
         } else {
           if (debugSerial) {
-            Serial.println("dataSuccess default else");
+            Serial.println("Debug: dataSuccess default else");
           }
           fillWeatherFromJson(&weather_data); //weather.h
           //TODO Check for fill success?     
