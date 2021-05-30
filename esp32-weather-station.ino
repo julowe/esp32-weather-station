@@ -297,6 +297,10 @@ void setup() {
   //Display pollution Data
   if (dataWrapperPollutionSuccess) {
     barWidthPollution = displayPollution(&pollution_data, true);
+    if (debugSerial) {
+      Serial.print("Pollution bars width = ");
+      Serial.println(barWidthPollution);
+    }
   } else {
     //maybe don't display error here, as then logic is complicated for erasing or keeping after trello data gotten
 //    indexedLayer5.fillScreen(0);
@@ -324,6 +328,9 @@ void setup() {
   //wait 20 seconds
   delay(20*1000);
   //then "minimize" pollution data
+  if (debugSerial) {
+    Serial.println("DEBUG: Minimizing pollution bars");
+  }
   barWidthPollution = displayPollution(&pollution_data, false);
   
 //  disconnectFromWifi(); //TODO do we want to explicitly disconnect from wifi between updates for any reason? chip heat savings?
@@ -719,25 +726,26 @@ int displayPollution(Pollution* pollution_data, bool showValue) {
   
   int xStartPM25 = xWidthAQI + 2; 
   int xWidthPM25 = 10; //default to just small color bar
-  if ( atoi(pollution_data->pm2_5) < 10 ) {
-    //don't change bar width
-  } else if ( atoi(pollution_data->pm2_5) < 100 ) {
-    xWidthPM25 = 15; //2*5char + 2 on each side + 1
-  } else if ( atoi(pollution_data->pm2_5) < 1000 ) {
-    xWidthPM25 = 21; //3*5char + 2 on each side
-  } else {
-    //huh?
-  }
-  bars_width = xStartPM25 + xWidthPM25;
-  
   int yStartPM25 = 30; //default to just small color bar
   
   if ( showValue ) {
     yStartPM25 = 24;
+
+    //only expand width of bar if showing value
+    if ( atoi(pollution_data->pm2_5) < 10 ) {
+      //don't change bar width
+    } else if ( atoi(pollution_data->pm2_5) < 100 ) {
+      xWidthPM25 = 15; //2*5char + 2 on each side + 1
+    } else if ( atoi(pollution_data->pm2_5) < 1000 ) {
+      xWidthPM25 = 21; //3*5char + 2 on each side
+    } else {
+      //huh?
+    }
   } 
 //  else {
 //    int yStart = 30;
 //  }
+  bars_width = xStartPM25 + xWidthPM25;
 
   for ( int x = xStartPM25; x < xStartPM25+xWidthPM25; x++ ) {
     for ( int y = yStartPM25; y < 32; y++ ) {
@@ -796,25 +804,26 @@ int displayPollution(Pollution* pollution_data, bool showValue) {
   
   int xStartPM10 = xWidthAQI + 2 + xWidthPM25 + 2;
   int xWidthPM10 = 10; //default to just small color bar
-  if ( atoi(pollution_data->pm10) < 10 ) {
-    //don't change bar width
-  } else if ( atoi(pollution_data->pm10) < 100 ) {
-    xWidthPM10 = 15; //2*5char + 2 on each side + 1
-  } else if ( atoi(pollution_data->pm10) < 1000 ) {
-    xWidthPM10 = 21; //3*5char + 2 on each side
-  } else {
-    //huh?
-  }
-  bars_width = xStartPM10 + xWidthPM10;
-  
   int yStartPM10 = 30; //default to just small color bar
   
   if ( showValue ) {
     yStartPM10 = 24;
+
+    //only expand width of bar if showing value
+    if ( atoi(pollution_data->pm10) < 10 ) {
+      //don't change bar width
+    } else if ( atoi(pollution_data->pm10) < 100 ) {
+      xWidthPM10 = 15; //2*5char + 2 on each side + 1
+    } else if ( atoi(pollution_data->pm10) < 1000 ) {
+      xWidthPM10 = 21; //3*5char + 2 on each side
+    } else {
+      //huh?
+    }
   } 
 //  else {
 //    int yStart = 30;
 //  }
+  bars_width = xStartPM10 + xWidthPM10;
 
   for ( int x = xStartPM10; x < xStartPM10+xWidthPM10; x++ ) {
     for ( int y = yStartPM10; y < 32; y++ ) {
