@@ -86,6 +86,7 @@ Weather weather_data;
 //pollution stuff
 #include "pollution.h";
 Pollution pollution_data;
+int barWidthPollution;
 
 
 //trello stuff
@@ -295,7 +296,7 @@ void setup() {
 
   //Display pollution Data
   if (dataWrapperPollutionSuccess) {
-    displayPollution(&pollution_data, true);
+    barWidthPollution = displayPollution(&pollution_data, true);
   } else {
     //maybe don't display error here, as then logic is complicated for erasing or keeping after trello data gotten
 //    indexedLayer5.fillScreen(0);
@@ -323,7 +324,7 @@ void setup() {
   //wait 20 seconds
   delay(20*1000);
   //then "minimize" pollution data
-  displayPollution(&pollution_data, false);
+  barWidthPollution = displayPollution(&pollution_data, false);
   
 //  disconnectFromWifi(); //TODO do we want to explicitly disconnect from wifi between updates for any reason? chip heat savings?
 }
@@ -394,7 +395,7 @@ void loop() {
   
     //Display pollution Data
     if (dataWrapperPollutionSuccess) {
-      displayPollution(&pollution_data, false);
+      barWidthPollution = displayPollution(&pollution_data, false);
     }
 
     //get trello data
@@ -611,7 +612,9 @@ void displayWeather(Weather* weather_data) {
 }
 
 
-void displayPollution(Pollution* pollution_data, bool showValue) {
+int displayPollution(Pollution* pollution_data, bool showValue) {
+  int bars_width = 0;
+
   indexedLayerAQI.fillScreen(0);
   indexedLayerPM25.fillScreen(0);
   indexedLayerPM10.fillScreen(0);
@@ -649,6 +652,7 @@ void displayPollution(Pollution* pollution_data, bool showValue) {
   
   int xStartAQI = 0;
   int xWidthAQI = 10; //default to just small color bar
+  bars_width = xStartAQI + xWidthAQI; //AQI is always a one digit number, so bar width does not change
   int yStartAQI = 30; //default to just small color bar
   
   if ( showValue ) {
@@ -724,6 +728,7 @@ void displayPollution(Pollution* pollution_data, bool showValue) {
   } else {
     //huh?
   }
+  bars_width = xStartPM25 + xWidthPM25;
   
   int yStartPM25 = 30; //default to just small color bar
   
@@ -800,6 +805,7 @@ void displayPollution(Pollution* pollution_data, bool showValue) {
   } else {
     //huh?
   }
+  bars_width = xStartPM10 + xWidthPM10;
   
   int yStartPM10 = 30; //default to just small color bar
   
@@ -827,6 +833,8 @@ void displayPollution(Pollution* pollution_data, bool showValue) {
   }
 
   indexedLayer5.swapBuffers();
+
+  return bars_width;
 }
 void displayTrelloCards() {
   
