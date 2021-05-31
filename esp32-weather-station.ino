@@ -633,10 +633,14 @@ void displayClock() {
 
   //time
   //nicely align time
+  int nowHour = now.hour();
+  if ( nowHour > 12 ) {
+    nowHour -= 12;
+  }
   int timePos1;
   int timePos2;
   int timePos3;
-  if ( now.hour() % 12 < 10 ) {
+  if ( nowHour < 10 ) {
     timePos1 = 44;
     timePos2 = 48;
     timePos3 = 52;
@@ -647,7 +651,7 @@ void displayClock() {
   }
   
   //display time
-  sprintf(txtBuffer, "%d", now.hour() % 12);
+  sprintf(txtBuffer, "%d", nowHour);
   indexedLayer1.drawString(timePos1, 0, 1, txtBuffer);
   indexedLayer1.swapBuffers();
   
