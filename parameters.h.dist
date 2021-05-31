@@ -15,6 +15,25 @@
 #define URL_pollution "http://api.openweathermap.org/data/2.5/air_pollution?lat={lat}&lon={lon}&appid={APIKEY}"
 
 
+//Pollen: https://api-dashboard.getambee.com/#/docs
+//#define URL_pollen "https://api.ambeedata.com/forecast/pollen/by-lat-lng?lat={lat}&lng={lon}" //historical NB This will use 96 queries!
+#define URL_pollen "https://api.ambeedata.com/latest/pollen/by-lat-lng?lat={lat}&lng={lon}" //current
+#define APIKEY_pollen "{APIKEY}"
+/* given example: pollen historical
+ curl --request GET \
+ --url 'https://api.ambeedata.com/forecast/pollen/by-lat-lng?lat=12.9889055&lng=77.574044' \
+  --header 'Content-type: application/json' \
+  --header 'x-api-key: API_KEY'
+*/
+/* given example: pollen now
+ curl --request GET \
+ --url 'https://api.ambeedata.com/latest/pollen/by-lat-lng?lat=12.9889055&lng=77.574044' \
+  --header 'Content-type: application/json' \
+  --header 'x-api-key: API_KEY'
+ *
+*/
+
+
 /* TODO add covid data retrieval in general & also check generalization of template links below
  * 1) ALL days... no data logged on sundays https://api.covidactnow.org/v2/cbsa/{CBSA_ID}.timeseries.json?apiKey={COVID_API_KEY}
  * 2) can specify dates, smaller returned data, but need to do more math, and less documentation. also no sunday data for some counties https://api.covid19tracking.narrativa.com/api/country/{COUNTRY}/region/{STATE}/sub_region/{COUNTY}?date_from=2021-04-18&date_to=2021-04-20
