@@ -53,7 +53,7 @@ boolean getJSON(const char* url) {
     int httpCode = http.GET();
 //    Serial.print("HTTP code : "); //ok this isn't printing and I don't want to debug. moved to below error printing, which does work
 //    Serial.println(httpCode);
-    if (httpCode > 0) {
+    if (httpCode == 200) { //is this too broad? do we want 429/auth problems to fall through to be handled elsewhere??
 
 //      TODO [D][HTTPClient.cpp:1260] handleHeaderResponse(): size: 18612
 //      myString.reserve(size);
@@ -67,6 +67,9 @@ boolean getJSON(const char* url) {
       } else {
         success = true;
       }
+    } else {
+      Serial.print("Problem getting data! HTTP code : ");
+      Serial.println(httpCode);
     }
     http.end();
   }  
