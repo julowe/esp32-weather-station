@@ -736,7 +736,8 @@ int displayPollution(Pollution* pollution_data, bool showValue) {
     indexedLayerAQI.setIndexedColor(1, {0xff, 0, 0}); //bright red
   }
   
-  int xStartAQI = 0;
+//  int xStartAQI = 0;
+  int xStartAQI = 1; //don't start at edge of screen, 1 or 2 pixel padding?
   int xWidthAQI = 10; //default to just small color bar
   bars_width = xStartAQI + xWidthAQI; //AQI is always a one digit number, so bar width does not change
   int yStartAQI = 30; //default to just small color bar
@@ -803,7 +804,7 @@ int displayPollution(Pollution* pollution_data, bool showValue) {
     indexedLayerPM25.setIndexedColor(1, {0xff, 0, 0}); //bright red
   }
   
-  int xStartPM25 = xWidthAQI + 2; 
+  int xStartPM25 = xStartAQI + xWidthAQI + 2; 
   int xWidthPM25 = 10; //default to just small color bar
   int yStartPM25 = 30; //default to just small color bar
   
@@ -881,7 +882,7 @@ int displayPollution(Pollution* pollution_data, bool showValue) {
     indexedLayerPM10.setIndexedColor(1, {0xff, 0, 0}); //bright red
   }
   
-  int xStartPM10 = xWidthAQI + 2 + xWidthPM25 + 2;
+  int xStartPM10 = xStartAQI + xWidthAQI + 2 + xWidthPM25 + 2;
   int xWidthPM10 = 10; //default to just small color bar
   int yStartPM10 = 30; //default to just small color bar
   
