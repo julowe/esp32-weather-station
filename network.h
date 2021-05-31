@@ -50,6 +50,12 @@ boolean getJSON(const char* url) {
     
     HTTPClient http;
     http.begin(url);
+    
+    if ( strcmp(url, URL_pollen) == 0 ) {
+      Serial.println("Adding Pollen API Key to headers");
+      http.addHeader("x-api-key", APIKEY_pollen);
+    }
+    
     int httpCode = http.GET();
 //    Serial.print("HTTP code : "); //ok this isn't printing and I don't want to debug. moved to below error printing, which does work
 //    Serial.println(httpCode);

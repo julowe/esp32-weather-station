@@ -86,7 +86,14 @@ Weather weather_data;
 //pollution stuff
 #include "pollution.h";
 Pollution pollution_data;
-int barWidthPollution;
+int barWidthPollution = 0;
+
+
+//pollen stuff
+#include "pollen.h";
+Pollen pollen_data;
+int barWidthPollen1 = 0;
+int barWidthPollen2 = 0;
 
 
 //trello stuff
@@ -115,9 +122,11 @@ SMARTMATRIX_ALLOCATE_INDEXED_LAYER(indexedLayer1, kMatrixWidth, kMatrixHeight, C
 SMARTMATRIX_ALLOCATE_INDEXED_LAYER(indexedLayer2, kMatrixWidth, kMatrixHeight, COLOR_DEPTH, kIndexedLayerOptions);
 SMARTMATRIX_ALLOCATE_INDEXED_LAYER(indexedLayer3, kMatrixWidth, kMatrixHeight, COLOR_DEPTH, kIndexedLayerOptions);
 SMARTMATRIX_ALLOCATE_SCROLLING_LAYER(scrollingLayer, kMatrixWidth, kMatrixHeight, COLOR_DEPTH, kScrollingLayerOptions);
+
 SMARTMATRIX_ALLOCATE_INDEXED_LAYER(indexedLayerAQI, kMatrixWidth, kMatrixHeight, COLOR_DEPTH, kIndexedLayerOptions); //color rectangles for pollution (over scrolling text)
 SMARTMATRIX_ALLOCATE_INDEXED_LAYER(indexedLayerPM25, kMatrixWidth, kMatrixHeight, COLOR_DEPTH, kIndexedLayerOptions); //color rectangles for pollution (over scrolling text)
 SMARTMATRIX_ALLOCATE_INDEXED_LAYER(indexedLayerPM10, kMatrixWidth, kMatrixHeight, COLOR_DEPTH, kIndexedLayerOptions); //color rectangles for pollution (over scrolling text)
+SMARTMATRIX_ALLOCATE_INDEXED_LAYER(indexedLayerPollen, kMatrixWidth, kMatrixHeight, COLOR_DEPTH, kIndexedLayerOptions); //color rectangles for pollen (over scrolling text)
 
 SMARTMATRIX_ALLOCATE_INDEXED_LAYER(indexedLayer5, kMatrixWidth, kMatrixHeight, COLOR_DEPTH, kIndexedLayerOptions); //layer for pollution numbers
 
@@ -188,6 +197,8 @@ void setup() {
   matrix.addLayer(&indexedLayerAQI);
   matrix.addLayer(&indexedLayerPM25);
   matrix.addLayer(&indexedLayerPM10);
+  matrix.addLayer(&indexedLayerPollen);
+  
   matrix.addLayer(&indexedLayer5);
   
   matrix.begin();
@@ -332,6 +343,42 @@ void setup() {
 //    indexedLayer5.swapBuffers();
   }
 
+  //get pollen data at startup
+  bool dataWrapperPollenSuccess = getDataWrapper("pollen", 5, 3); //try connecting to wifi 5 times, getting data thrice
+  if (debugSerial && dataWrapperPollenSuccess) {
+    Serial.println("Succesfully got pollen data");
+  } else if (debugSerial && !dataWrapperPollenSuccess) {
+    Serial.println("ERROR: Did not retrieve pollen data.");
+  }
+
+ 
+  if (dataWrapperPollenSuccess) {
+    dataWrapperPollenSuccess = parseDataWrapper("pollen");
+  }
+  if (debugSerial && dataWrapperPollenSuccess) {
+    Serial.println("Succesfully parsed pollen data");
+    printPollenDebug(&pollen_data);
+  } else if (debugSerial && !dataWrapperPollenSuccess) {
+    Serial.println("ERROR: Did not parse pollen data.");
+  }
+
+  //Display pollen Data
+  if ( dataWrapperPollenSuccess && dataWrapperPollutionSuccess ) {
+//    barWidthPollen = displayPollenGrass(&pollen_data, barWidthPollution, true);
+    barWidthPollen1 = displayPollenWorst(&pollen_data, barWidthPollution, true);
+    barWidthPollen2 = displayPollenGrass(&pollen_data, barWidthPollen1, true);
+    Serial.print("Pollen bar(s) width = ");
+//    Serial.println(barWidthPollen1);
+    Serial.println(barWidthPollen1 + 2 + barWidthPollen2);
+  } else if ( dataWrapperPollenSuccess ) {
+//    barWidthPollen = displayPollenGrass(&pollen_data, 0, true);
+    barWidthPollen1 = displayPollenWorst(&pollen_data, 0, true); //barWidthPollution is now initialized as 0, so this else if isn't needed, at least until we want to do more here
+    barWidthPollen2 = displayPollenGrass(&pollen_data, barWidthPollen1, true);
+    Serial.print("Pollen bar(s) width = ");
+//    Serial.println(barWidthPollen1);
+    Serial.println(barWidthPollen1 + 2 + barWidthPollen2);
+  } else {
+  }
 
   //get Trello data at startup
   bool dataWrapperTrelloSuccess = getDataWrapper("trello_cards", 5, 3); //try connecting to wifi 5 times, getting data thrice
@@ -366,6 +413,18 @@ void setup() {
   if ( dataWrapperPollutionSuccess ) {
     barWidthPollution = displayPollution(&pollution_data, false);
   }
+
+  if ( dataWrapperPollenSuccess && dataWrapperPollutionSuccess ) {
+//    barWidthPollen = displayPollenGrass(&pollen_data, barWidthPollution, false);
+    barWidthPollen1 = displayPollenWorst(&pollen_data, barWidthPollution, false);
+    barWidthPollen2 = displayPollenGrass(&pollen_data, barWidthPollen1, false);
+  } else if ( dataWrapperPollenSuccess ) {
+//    barWidthPollen = displayPollenGrass(&pollen_data, 0, false);
+    barWidthPollen1 = displayPollenWorst(&pollen_data, 0, false);
+    barWidthPollen2 = displayPollenGrass(&pollen_data, barWidthPollen1, false);
+  }
+  
+  
   
 //  disconnectFromWifi(); //TODO do we want to explicitly disconnect from wifi between updates for any reason? chip heat savings?
 }
@@ -925,6 +984,268 @@ int displayPollution(Pollution* pollution_data, bool showValue) {
 
   return bars_width;
 }
+
+
+//this function only display grass pollen value
+int displayPollenGrass(Pollen* pollen_data, int xStart, bool showValue) {
+
+  char* conditions[] = {"Low", 
+                        "Moderate", 
+                        "High", 
+                        "Very High"};
+//  size_t num_conditions = sizeof(conditions) / sizeof(conditions[0]);
+  int bars_width = 0;
+
+  indexedLayerPollen.fillScreen(0);
+  indexedLayer5.fillScreen(0);
+  indexedLayer5.setIndexedColor(1,{0, 0, 0});
+
+  /* Pollen Risk Descriptions: Possible values: Low, Moderate, High, Very High.
+   *  Risk  Provides a risk evaluation with levels
+   *  Low - Mild risk to those with severe respiratory issues. No risk for the general public
+   *  Moderate - Risky for those with severe respiratory problems. Mild risk for the general public
+   *  High - Risky for all groups of people
+   *  Very High - Highly risky for all groups of people
+  */
+  //rgb24 is of course in {red, blue, green} order
+    
+  if ( strcmp("Low", pollen_data->grass_desc) == 0 ) {
+    if (debugSerial) {
+      Serial.println("Debug: Grass pollen is Low");
+    }
+    indexedLayerPollen.setIndexedColor(1, {0, 0, 0xff}); //green
+  } else if ( strcmp("Moderate", pollen_data->grass_desc) == 0 ) {
+    if (debugSerial) {
+      Serial.println("Debug: Grass pollen is Moderate");
+    }
+    indexedLayerPollen.setIndexedColor(1, {0xff, 0x66, 0xff}); //yellow
+  } else if ( strcmp("High", pollen_data->grass_desc) == 0 ) {
+    if (debugSerial) {
+      Serial.println("Debug: Grass pollen is High");
+    }
+    indexedLayerPollen.setIndexedColor(1, {0x80, 0, 0}); //dull red   
+  } else if ( strcmp("Very High", pollen_data->grass_desc) == 0 ) {
+    if (debugSerial) {
+      Serial.println("Debug: Grass pollen is Very High");
+    }
+    indexedLayerPollen.setIndexedColor(1, {0xff, 0, 0}); //red   
+  } else {
+    if (debugSerial) {
+      Serial.print("Debug: Grass pollen was not an expected value: ");
+      Serial.println(pollen_data->grass_desc);
+    }
+  }
+
+  int xStartPollenGrass = xStart + 2;
+  int xWidthPollenGrass = 10; //default to just small color bar
+  int yStartPollenGrass = 30; //default to just small color bar
+  
+  if ( showValue ) {
+    yStartPollenGrass = 24;
+
+    //only expand width of bar if showing value
+    if ( atoi(pollen_data->grass_num) < 10 ) {
+      //don't change bar width
+    } else if ( atoi(pollen_data->grass_num) < 100 ) {
+      xWidthPollenGrass = 15; //2*5char + 2 on each side + 1
+    } else if ( atoi(pollen_data->grass_num) < 1000 ) {
+      xWidthPollenGrass = 21; //3*5char + 2 on each side
+    } else {
+      //huh?
+    }
+  } 
+//  else {
+//  }
+  bars_width = xStartPollenGrass + xWidthPollenGrass;
+
+  for ( int x = xStartPollenGrass; x < xStartPollenGrass+xWidthPollenGrass; x++ ) {
+    for ( int y = yStartPollenGrass; y < 32; y++ ) {
+      indexedLayerPollen.drawPixel(x, y, 1);
+    }
+  }
+  indexedLayerPollen.swapBuffers();
+
+  if ( showValue ) {
+    indexedLayer5.setFont(font5x7);
+    indexedLayer5.drawString(xStartPollenGrass+3, 25, 1, pollen_data->grass_num);
+//    indexedLayer5.swapBuffers();
+  }
+
+  indexedLayer5.swapBuffers();
+
+  return bars_width;
+}
+
+
+//this function only display the highest/worst pollen value
+int displayPollenWorst(Pollen* pollen_data, int xStart, bool showValue) {
+
+  char* conditions[] = {"Low", 
+                        "Moderate", 
+                        "High", 
+                        "Very High"};
+  int bars_width = 0;
+
+  indexedLayerPollen.fillScreen(0);
+  indexedLayer5.fillScreen(0);
+  indexedLayer5.setIndexedColor(1,{0, 0, 0});
+
+  /* Pollen Risk Descriptions: Possible values: Low, Moderate, High, Very High.
+   *  Risk  Provides a risk evaluation with levels
+   *  Low - Mild risk to those with severe respiratory issues. No risk for the general public
+   *  Moderate - Risky for those with severe respiratory problems. Mild risk for the general public
+   *  High - Risky for all groups of people
+   *  Very High - Highly risky for all groups of people
+  */
+  //rgb24 is of course in {red, blue, green} order
+
+  char pollenWorstType[10] = "Not set";
+  char pollenWorstNum[10] = "0";
+  char pollenWorstAbbrev = '0'; //One letter in case we want a short display somewhere?
+  char pollenWorstDesc[10] = "not set";
+  int desc_num = 3;
+//  size_t num_conditions = sizeof(conditions) / sizeof(conditions[0]);
+  while ( desc_num <= 0 ) {
+    //order these in what order you care most (if multiple have the same description
+    if ( strcmp(conditions[desc_num], pollen_data->grass_desc) == 0 ) {
+      strcpy(pollenWorstType,"Grass");
+      strcpy(pollenWorstNum, pollen_data->grass_num);
+      pollenWorstAbbrev = 'g';
+      strcpy(pollenWorstDesc, conditions[desc_num]);
+      break;
+    }
+    if (debugSerial) {
+      Serial.print("Condition array value ");
+      Serial.print(desc_num);
+      Serial.print(": ");
+      Serial.print(conditions[desc_num]);
+      Serial.print(" did not match Grass description: ");
+      Serial.println(pollen_data->grass_desc);
+    }
+    
+    if ( strcmp(conditions[desc_num], pollen_data->tree_desc) == 0 ) {
+      strcpy(pollenWorstType, "Tree");
+      strcpy(pollenWorstNum, pollen_data->tree_num);
+      pollenWorstAbbrev = 't';
+      strcpy(pollenWorstDesc, conditions[desc_num]);
+      break;
+    }
+    if (debugSerial) {
+      Serial.print("Condition array value ");
+      Serial.print(desc_num);
+      Serial.print(": ");
+      Serial.print(conditions[desc_num]);
+      Serial.print(" did not match Tree description: ");
+      Serial.println(pollen_data->tree_desc);
+    }
+    
+    if ( strcmp(conditions[desc_num], pollen_data->weed_desc) == 0 ) {
+      strcpy(pollenWorstType, "Weed");
+      strcpy(pollenWorstNum, pollen_data->weed_num);
+      pollenWorstAbbrev = 'w';
+      strcpy(pollenWorstDesc, conditions[desc_num]);
+      break;
+    }
+    if (debugSerial) {
+      Serial.print("Condition array value ");
+      Serial.print(desc_num);
+      Serial.print(": ");
+      Serial.print(conditions[desc_num]);
+      Serial.print(" did not match Weed description: ");
+      Serial.println(pollen_data->weed_desc);
+    }
+    
+    desc_num--;
+    if (debugSerial) {
+      Serial.print("Condition array value: ");
+      Serial.print(conditions[desc_num]);
+      Serial.println(" did not match any data in polen_data.");
+    }
+  }
+
+    
+  if ( strcmp("Low", pollenWorstDesc) == 0 ) {
+    if (debugSerial) {
+      Serial.print("Debug: ");
+      Serial.print(pollenWorstType);
+      Serial.println(" pollen is Low");
+    }
+    indexedLayerPollen.setIndexedColor(1, {0, 0, 0xff}); //green
+  } else if ( strcmp("Moderate", pollenWorstDesc) == 0 ) {
+    if (debugSerial) {
+      Serial.print("Debug:  ");
+      Serial.print(pollenWorstType);
+      Serial.println(" pollen is Moderate");
+    }
+    indexedLayerPollen.setIndexedColor(1, {0xff, 0x66, 0xff}); //yellow
+  } else if ( strcmp("High", pollenWorstDesc) == 0 ) {
+    if (debugSerial) {
+      Serial.print("Debug:  ");
+      Serial.print(pollenWorstType);
+      Serial.println(" pollen is High");
+    }
+    indexedLayerPollen.setIndexedColor(1, {0x80, 0, 0}); //dull red   
+  } else if ( strcmp("Very High", pollenWorstDesc) == 0 ) {
+    if (debugSerial) {
+      Serial.print("Debug:  ");
+      Serial.print(pollenWorstType);
+      Serial.println(" pollen is Very High");
+    }
+    indexedLayerPollen.setIndexedColor(1, {0xff, 0, 0}); //red   
+  } else {
+    if (debugSerial) {
+      Serial.print("Debug: ");
+      Serial.print(pollenWorstType);
+      Serial.print(" pollen was not an expected value: ");
+      Serial.println(pollenWorstDesc);
+    }
+  }
+
+  int xStartPollenWorst = xStart + 2;
+  int xWidthPollenWorst = 10; //default to just small color bar
+  int yStartPollenWorst = 30; //default to just small color bar
+  
+  if ( showValue ) {
+    yStartPollenWorst = 24;
+
+    //only expand width of bar if showing value
+    if ( atoi(pollenWorstNum) < 10 ) {
+      //don't change bar width
+    } else if ( atoi(pollenWorstNum) < 100 ) {
+      xWidthPollenWorst = 15; //2*5char + 2 on each side + 1
+    } else if ( atoi(pollenWorstNum) < 1000 ) {
+      xWidthPollenWorst = 21; //3*5char + 2 on each side
+    } else {
+      //huh?
+    }
+  } 
+//  else {
+//  }
+  bars_width = xStartPollenWorst + xWidthPollenWorst;
+
+  for ( int x = xStartPollenWorst; x < xStartPollenWorst+xWidthPollenWorst; x++ ) {
+    for ( int y = yStartPollenWorst; y < 32; y++ ) {
+      indexedLayerPollen.drawPixel(x, y, 1);
+    }
+  }
+  indexedLayerPollen.swapBuffers();
+
+  if ( showValue ) {
+    char txtBuffer[20];
+    sprintf(txtBuffer, "%s%s", (const char*) pollenWorstAbbrev, (const char*) pollenWorstNum); //prepend with first letter of pollen type
+    indexedLayer5.setFont(font5x7);
+    indexedLayer5.drawString(xStartPollenWorst+3, 25, 1, txtBuffer);
+//    indexedLayer5.swapBuffers();
+  }
+
+  indexedLayer5.swapBuffers();
+
+  return bars_width;
+}
+
+
+
+
 void displayTrelloCards() {
   
     scrollingLayer.setMode(wrapForward);
@@ -1054,6 +1375,11 @@ boolean getDataWrapper(String data_source, int connectWifiTries, int getDataTrie
           Serial.println("Debug: pollution if");
         }
         dataSuccess = getJSON(URL_pollution);
+      } else if ( data_source == "pollen") {
+        if (debugSerial) {
+          Serial.println("Debug: pollen if");
+        }
+        dataSuccess = getJSON(URL_pollen);
       } else if ( data_source == "covid") {
         if (debugSerial) {
           Serial.println("Debug: covid if");
@@ -1119,6 +1445,15 @@ boolean parseDataWrapper(String data_source) {
     }
     parseSuccess = fillPollutionFromJson(&pollution_data); //pollution.h
     jsonResult = JSON.parse("{}");
+  } else if ( data_source == "pollen") {
+    if (debugSerial) {
+      Serial.println("Debug: dataSuccess pollen if");
+    }
+    parseSuccess = fillPollenFromJson(&pollen_data); //pollen.h
+    if (debugSerial && !parseSuccess) {
+      Serial.println(JSON.stringify(jsonResult));
+    }
+    jsonResult = JSON.parse("{}");    
   } else if ( data_source == "covid") {
     if (debugSerial) {
       Serial.println("Debug: dataSuccess covid if");
