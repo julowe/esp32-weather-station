@@ -21,10 +21,11 @@
 //TODO better differentiate get or parse data failures? But not sure if I would do anything different with different failures...
 //TODO save data to SD card?
 //TODO sleep during display intervals? or keep arduino on?
-//TODO move led display code to display-led.h
+//TODO move led display code to display-led.h - or to specific data type .h files?
 //TODO hourly temp doesnt give much more info. use daily-timeframe temps instead?
 //TODO buttons to display diff data - random trello card(1), tomorrow weather. covid? pollution?
 //TODO button for new random trello card - first display random card scroll text, then usual first, random text (so less waiting for new data to display)
+//TODO physical button to display random gif from SD card :-)
 /*TODO 
  * x- display pollution and allergy levels as 15x1-2 pixel bars at bottom of screen. 
  * x- red yellow green bars as according to data/apis. 
@@ -646,6 +647,8 @@ void sleep(uint64_t sleepTime) {
     Serial.print(sleepTime/1000);
     Serial.println(" seconds.");
   }
+
+  //TODO get rtc seconds and set sleep to wake up at 00 second mark
   
   Serial.flush();
   if (! debug) {
@@ -735,6 +738,8 @@ void displayWeather(Weather* weather_data) {
    *  word weather description
    */
   char txtBuffer[20];
+  DateTime now = rtc.now();
+
   //weather description in words
   indexedLayer2.fillScreen(0);
 
@@ -747,6 +752,20 @@ void displayWeather(Weather* weather_data) {
   indexedLayer3.fillScreen(0);
   int pop0Temp = atof(weather_data->popH0)*100;
 //  int pop1Temp = atof(weather_data->popH1)*100;
+
+/* TODO depending on time of day show one of:
+ *  
+ *    char tempDayD[10];
+ *    char tempNightD[10];
+ *    char tempEveD[10];
+ *    char tempMornD[10];
+ *    
+ *    also what are these hours??
+ */
+//  if ( now.hour() <= 4 ) {
+//    
+//  }
+
 //  sprintf(txtBuffer, "%s %s", weather_data->tempC, weather_data->tempH1);
   sprintf(txtBuffer, "%s %s %i%%", weather_data->tempC, weather_data->tempH1, pop1Temp);
 //  sprintf(txtBuffer, "%s %s %3i%% %3i%%", weather_data->tempC, weather_data->tempH1, atof(weather_data->popH1)*100, atof(weather_data->popH4)*100);
