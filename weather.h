@@ -52,7 +52,8 @@ struct Weather {
   int updated;
 };
 
-void fillWeatherFromJson(Weather* weather_data) {
+boolean fillWeatherFromJson(Weather* weather_data) {
+  boolean fillWeatherSuccess = false;
         
   //current
   sprintf(weather_data->descriptionC, "%s", (const char*) jsonResult["current"]["weather"][0]["description"]);
@@ -120,6 +121,10 @@ void fillWeatherFromJson(Weather* weather_data) {
   int t = dt + timezone_offset;
 //  sprintf(weather_data->updated, "MAJ : %02d/%02d %02d:%02d", day(t), month(t), hour(t), minute(t));
   weather_data->updated = t ;
+
+  fillWeatherSuccess = true;
+
+  return fillWeatherSuccess;
   
 }
 

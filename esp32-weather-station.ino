@@ -266,10 +266,21 @@ void setup() {
 
   if (debugSerial && dataWrapperSuccess) {
     Serial.println("Succesfully got weather data");
-    printWeatherDebug(&weather_data);
   } else if (debugSerial && !dataWrapperSuccess) {
     Serial.println("ERROR: Did not retrieve weather data.");
-  }  
+  }
+
+ 
+  if (dataWrapperSuccess) {
+    dataWrapperSuccess = parseDataWrapper("weather");
+  }
+  if (debugSerial && dataWrapperSuccess) {
+    Serial.println("Succesfully parsed weather data");
+    printWeatherDebug(&weather_data);
+  } else if (debugSerial && !dataWrapperSuccess) {
+    Serial.println("ERROR: Did not parse weather data.");
+  }
+  
 
   //Display Weather Data
   if (dataWrapperSuccess) {
@@ -289,10 +300,20 @@ void setup() {
   bool dataWrapperPollutionSuccess = getDataWrapper("pollution", 5, 3); //try connecting to wifi 5 times, getting data thrice
   if (debugSerial && dataWrapperPollutionSuccess) {
     Serial.println("Succesfully got pollution data");
-      printPollutionDebug(&pollution_data);
   } else if (debugSerial && !dataWrapperPollutionSuccess) {
     Serial.println("ERROR: Did not retrieve pollution data.");
-  }  
+  }
+
+ 
+  if (dataWrapperPollutionSuccess) {
+    dataWrapperPollutionSuccess = parseDataWrapper("pollution");
+  }
+  if (debugSerial && dataWrapperPollutionSuccess) {
+    Serial.println("Succesfully parsed pollution data");
+      printPollutionDebug(&pollution_data);
+  } else if (debugSerial && !dataWrapperPollutionSuccess) {
+    Serial.println("ERROR: Did not parse pollution data.");
+  }
 
   //Display pollution Data
   if (dataWrapperPollutionSuccess) {
@@ -318,7 +339,17 @@ void setup() {
     Serial.println("Succesfully got trello data");
   } else if (debugSerial && !dataWrapperTrelloSuccess) {
     Serial.println("ERROR: Did not retrieve trello data.");
-  }  
+  }
+
+ 
+  if (dataWrapperTrelloSuccess) {
+    dataWrapperTrelloSuccess = parseDataWrapper("trello_cards");
+  }
+  if (debugSerial && dataWrapperTrelloSuccess) {
+    Serial.println("Succesfully parsed trello_cards data");
+  } else if (debugSerial && !dataWrapperTrelloSuccess) {
+    Serial.println("ERROR: Did not parse trello_cards data.");
+  }
 
   //Display Trello Data
   if (dataWrapperTrelloSuccess) {
@@ -331,7 +362,10 @@ void setup() {
   if (debugSerial) {
     Serial.println("DEBUG: Minimizing pollution bars");
   }
-  barWidthPollution = displayPollution(&pollution_data, false);
+
+  if ( dataWrapperPollutionSuccess ) {
+    barWidthPollution = displayPollution(&pollution_data, false);
+  }
   
 //  disconnectFromWifi(); //TODO do we want to explicitly disconnect from wifi between updates for any reason? chip heat savings?
 }
@@ -362,10 +396,20 @@ void loop() {
     
     if (debugSerial && dataWrapperSuccess) {
       Serial.println("Debug: Succesfully got weather data");
-      printWeatherDebug(&weather_data);
     } else if (debugSerial && !dataWrapperSuccess) {
       Serial.println("ERROR: Did not retrieve weather data.");
-    }       
+    }
+
+ 
+    if (dataWrapperSuccess) {
+      dataWrapperSuccess = parseDataWrapper("weather");
+    }
+    if (debugSerial && dataWrapperSuccess) {
+      Serial.println("Succesfully parsed weather data");
+      printWeatherDebug(&weather_data);
+    } else if (debugSerial && !dataWrapperSuccess) {
+      Serial.println("ERROR: Did not parse weather data.");
+    }
     
     //Display Data
     if (dataWrapperSuccess) {
@@ -395,10 +439,20 @@ void loop() {
     bool dataWrapperPollutionSuccess = getDataWrapper("pollution");
     if (debugSerial && dataWrapperPollutionSuccess) {
       Serial.println("Succesfully got pollution data");
-        printPollutionDebug(&pollution_data);
     } else if (debugSerial && !dataWrapperPollutionSuccess) {
       Serial.println("ERROR: Did not retrieve pollution data.");
-    }  
+    }
+
+ 
+    if (dataWrapperPollutionSuccess) {
+      dataWrapperPollutionSuccess = parseDataWrapper("pollution");
+    }
+    if (debugSerial && dataWrapperPollutionSuccess) {
+      Serial.println("Succesfully parsed pollution data");
+        printPollutionDebug(&pollution_data);
+    } else if (debugSerial && !dataWrapperPollutionSuccess) {
+      Serial.println("ERROR: Did not parse pollution data.");
+    }
   
     //Display pollution Data
     if (dataWrapperPollutionSuccess) {
@@ -408,10 +462,20 @@ void loop() {
     //get trello data
     bool dataWrapperTrelloSuccess = getDataWrapper("trello_cards");
     if (debugSerial && dataWrapperTrelloSuccess) {
-      Serial.println("Debug: Succesfully got trello data");
+      Serial.println("Debug: Succesfully got trello_cards data");
     } else if (debugSerial && !dataWrapperTrelloSuccess) {
-      Serial.println("ERROR: Did not retrieve trello data.");
-    }  
+      Serial.println("ERROR: Did not retrieve trello_cards data.");
+    }
+
+ 
+    if (dataWrapperTrelloSuccess) {
+      dataWrapperTrelloSuccess = parseDataWrapper("trello_cards");
+    }
+    if (debugSerial && dataWrapperTrelloSuccess) {
+      Serial.println("Succesfully parsed trello_cards data");
+    } else if (debugSerial && !dataWrapperTrelloSuccess) {
+      Serial.println("ERROR: Did not parse trello_cards data.");
+    }
   
     //Display Trello Data
     if (dataWrapperTrelloSuccess) {
@@ -447,17 +511,28 @@ void loop() {
      * update covid data struct
      * print new data if in serial debug mode
      */
-    dataWrapperSuccess = getDataWrapper("covid");
+    bool dataWrapperCovidSuccess = getDataWrapper("covid");
     
-    if (debugSerial && dataWrapperSuccess) {
+    if (debugSerial && dataWrapperCovidSuccess) {
       Serial.println("Debug: Succesfully got covid data");
-//      printCovidDebug(&weather_data); //TODO make covid data display debug
-    } else if (debugSerial && !dataWrapperSuccess) {
+    } else if (debugSerial && !dataWrapperCovidSuccess) {
       Serial.println("ERROR: Did not retrieve covid data.");
-    }       
+    }
+
+ 
+    if (dataWrapperCovidSuccess) {
+//      dataWrapperCovidSuccess = parseDataWrapper("covid"); //TODO make this
+      dataWrapperCovidSuccess = false; //make false until make parsing function
+    }
+    if (debugSerial && dataWrapperCovidSuccess) {
+      Serial.println("Succesfully parsed covid data");
+//      printCovidDebug(&covid_data); //TODO make covid data display debug
+    } else if (debugSerial && !dataWrapperCovidSuccess) {
+      Serial.println("ERROR: Did not parse covid data.");
+    }      
     
     //Display Data
-    if (dataWrapperSuccess) {
+    if (dataWrapperCovidSuccess) {
       //TODO make 'last updated' it's own layer
 //      displayCovidData(&covid_data); //TODO make covid data display function
     } else {
@@ -993,51 +1068,6 @@ boolean getDataWrapper(String data_source, int connectWifiTries, int getDataTrie
       }
       
       if (dataSuccess) {
-
-        if ( data_source == "weather") {
-          if (debugSerial) {
-            Serial.println("dataSuccess weather if");
-          }
-          fillWeatherFromJson(&weather_data); //weather.h
-          //TODO Check for fill success?
-          jsonResult = JSON.parse("{}");        
-        } else if ( data_source == "pollution") {
-          if (debugSerial) {
-            Serial.println("Debug: dataSuccess pollution if");
-          }
-//          Serial.println("Pollution data storage not yet implemented.");
-          fillPollutionFromJson(&pollution_data); //pollution.h
-          //TODO Check for fill success?
-          jsonResult = JSON.parse("{}");    
-        } else if ( data_source == "covid") {
-          if (debugSerial) {
-            Serial.println("Debug: dataSuccess covid if");
-          }
-          Serial.println("Covid data storage not yet implemented.");
-//          fillCovidDataFromJson(&covid_data); //weather.h
-        } else if ( data_source == "trello_cards") {
-          if (debugSerial) {
-            Serial.println("Debug: dataSuccess trello if");
-          }       
-          trelloFirstCard(trelloCardNameFirst);
-          trelloRandomCard(trelloCardNameRandom);
-          
-          if (debugSerial) {
-            Serial.print("Debug: First card name: ");
-            Serial.print(trelloCardNameFirst);
-            Serial.print(", Second card name: ");
-            Serial.println(trelloCardNameRandom);
-          }
-          //TODO Check for fill success?
-          jsonResult = JSON.parse("{}");        
-        } else {
-          if (debugSerial) {
-            Serial.println("Debug: dataSuccess default else");
-          }
-          fillWeatherFromJson(&weather_data); //weather.h
-          //TODO Check for fill success?     
-          jsonResult = JSON.parse("{}");
-        }
         
       } else {
         if (debugSerial) {
@@ -1062,6 +1092,62 @@ boolean getDataWrapper(String data_source, int connectWifiTries, int getDataTrie
 
   return dataSuccess;
 }
+
+
+boolean parseDataWrapper(String data_source) {
+  bool parseSuccess = false;
+  if (debugSerial) {
+    Serial.print("---- Starting parseDataWrapper(");
+    Serial.print(data_source);
+    Serial.println(") ----");
+  }
+
+  if ( data_source == "weather") {
+    if (debugSerial) {
+      Serial.println("dataSuccess weather if");
+    }
+    parseSuccess = fillWeatherFromJson(&weather_data); //weather.h
+    jsonResult = JSON.parse("{}");
+  } else if ( data_source == "pollution") {
+    if (debugSerial) {
+      Serial.println("Debug: dataSuccess pollution if");
+    }
+    parseSuccess = fillPollutionFromJson(&pollution_data); //pollution.h
+    jsonResult = JSON.parse("{}");
+  } else if ( data_source == "covid") {
+    if (debugSerial) {
+      Serial.println("Debug: dataSuccess covid if");
+    }
+    Serial.println("Covid data storage not yet implemented.");
+//          parseSuccess = fillCovidDataFromJson(&covid_data); //weather.h
+  } else if ( data_source == "trello_cards") {
+    if (debugSerial) {
+      Serial.println("Debug: dataSuccess trello if");
+    }       
+    parseSuccess = trelloFirstCard(trelloCardNameFirst);
+    
+    if ( parseSuccess ) {
+      parseSuccess = trelloRandomCard(trelloCardNameRandom);
+    }
+    
+    if (debugSerial) {
+      Serial.print("Debug: First card name: ");
+      Serial.print(trelloCardNameFirst);
+      Serial.print(", Second card name: ");
+      Serial.println(trelloCardNameRandom);
+    }
+    jsonResult = JSON.parse("{}");        
+  } else {
+    if (debugSerial) {
+      Serial.println("Debug: dataSuccess default else");
+    }
+    parseSuccess = fillWeatherFromJson(&weather_data); //weather.h
+    jsonResult = JSON.parse("{}");
+  }
+
+  return parseSuccess;
+}
+
 
 boolean getNTP(){
   bool getNTPSuccess = false;

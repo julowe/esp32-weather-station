@@ -14,7 +14,8 @@ struct Pollution {
   int updated;
 };
 
-void fillPollutionFromJson(Pollution* pollution_data) {
+boolean fillPollutionFromJson(Pollution* pollution_data) {
+  boolean fillPollutionSuccess = false;
   sprintf(pollution_data->aqi, "%1i",  (int) jsonResult["list"][0]["main"]["aqi"] ); //shoudl always be 1, but in case
   sprintf(pollution_data->co, "%.2f",  (double) jsonResult["list"][0]["components"]["co"] );
   sprintf(pollution_data->no, "%.2f",  (double) jsonResult["list"][0]["components"]["no"] );
@@ -30,6 +31,10 @@ void fillPollutionFromJson(Pollution* pollution_data) {
   int dt = (int) jsonResult["list"][0]["dt"];
   int t = dt + timezone_offset;
   pollution_data->updated = t ;
+
+  fillPollutionSuccess = true; //ok yeah this doesnt do anything
+
+  return fillPollutionSuccess;
 
 }
 
