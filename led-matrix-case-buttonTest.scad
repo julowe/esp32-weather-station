@@ -61,7 +61,7 @@ module buttonShape(){
 module buttonVoidTest(){
     difference(){
         translate([-3.5,-2,-11]){
-            cube([12 + 3 + 2*2,22,9+4.25+10+2*2]);
+            cube([12 + 3 + 2*2,22,9+4.25+4+2*2]);
         }
         //translate([-(buttonLegWidth + 2),-2,-(buttonLegHeight+2)]){
         //    cube([buttonWidth + buttonLegWidth*2 + 2*2,buttonDepth,buttonLegHeight+buttonHeight+buttonTopMechanismHeight+2*2]);
