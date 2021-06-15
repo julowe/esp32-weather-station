@@ -61,6 +61,9 @@ keyholeBackDepth = 3; //amount between wall and screw head
 /* TODO
 x- fix screw hole offsets - measure x-gap btw case and matrix - gap is 1.5mm
 - space on top for physical buttons
+  x- make void module
+    x- make option to add padding to button void, or not
+  x- increase leg width (for soldered wires)
 - keyhole hangers - make at same spot as top two corner screw holes
 - back vents?
   - for vents, make screw hole/plug supports larger (by wallThickness) to go into case, this way they then won't be cut up by vent shapes that difference the main shell, but the vents can still perforate most of case wall edge
@@ -175,38 +178,72 @@ module screwVoid(){
 //whitespace between modules
 
 
-module buttonShape(){
+
+module buttonShapeHelper(padding = "all", paddingValue = 10){
+    if ( padding == "stem" ) {
+        //
+        buttonDepthPadding = 0; //ignore paddingValue
+        stempDepthPadding = paddingValue - 1; //ugh ok lazy, the `-1` is to account for the fact that the "stem" in the module is actually the stem plus the clips from the button. this is 'ok enough' for now but obviously still overcounts on the -x & +x sides...
+        buttonTopDepthPadding = 0;
+        buttonTopPadding = 0;
+        buttonLegPadding = paddingValue*2; //this is sort of arbitrary, not based on other paddings
+        buttonShape(buttonDepthPadding, stempDepthPadding, buttonTopDepthPadding, buttonTopPadding, buttonLegPadding);
+    } else if ( padding == "all" ) {
+        buttonDepthPadding = paddingValue;
+//        stempDepthPadding = buttonDepthPadding + (buttonWidth - buttonTopMechanismWidth - buttonTopEdgeWidth);
+//        stempDepthPadding = buttonDepthPadding + (buttonWidth - [buttonWidth - buttonTopEdgeWidth*2] - buttonTopEdgeWidth); //ugh beause of my weird definitions...
+        stempDepthPadding = buttonDepthPadding + (12 - (12 - 2*2) -2);
+//        buttonTopDepthPadding = buttonDepthPadding + (buttonWidth - buttonTopWidth - buttonTopYsetback);
+        buttonTopDepthPadding = buttonDepthPadding + (12-10.5-0.5);
+        buttonTopPadding = buttonDepthPadding; //this is sort of arbitrary, not based on other paddings
+        buttonLegPadding = buttonDepthPadding*2; //this is sort of arbitrary, not based on other paddings
+        
+        buttonShape(buttonDepthPadding, stempDepthPadding, buttonTopDepthPadding, buttonTopPadding, buttonLegPadding);
+    } else if ( padding == "none" ) {
+        //ignore paddingValue
+        buttonShape(0, 0, 0, 0);
+    }
     
-    buttonDepthPadding = 5; //allowance to make 'slide in' work
+}
+//whitespace between modules
+
+
+module buttonShape(buttonDepthPadding = 0, stempDepthPadding = 0, buttonTopDepthPadding = 0, buttonTopPadding = 0, buttonLegPadding = 0){
+    
+//    buttonDepthPadding = 5; //allowance to make 'slide in' work
     buttonHeight = 4.25; //includes small black circle son top of button - at 4 corners
     buttonWidth = 12; //at 12 the y-axis fit is a bit tight, but holds firm. add 0.5 for looser fit
-    buttonDepth = buttonWidth + 10; //extra dimension for cutting through back wall - to allow 'slide in'
+    buttonDepth = buttonWidth + buttonDepthPadding; //extra dimension for cutting through back wall - to allow 'slide in'
 
     buttonPegWidth = 2;
     buttonPegHeight = 2;
 
-    buttonLegWidth = 1.5;
-    buttonLegHeight = 4 + buttonDepthPadding; //mesaured at 4, +x for extra working room
+    buttonLegWidth = 3;
+    buttonLegHeight = 4 + buttonLegPadding; //mesaured at 4, +x for extra working room
     buttonLegOverlap = 1.5; //amount of metal in button body in Z direction
 
     buttonTopEdgeWidth = 2; //space between edge and bewginning of button mechanism that is depressed
     buttonTopMechanismRidgeWidth = 1; //distance between outer diameter of button depression mechaism and stem
     buttonTopMechanismWidth = buttonWidth - buttonTopEdgeWidth*2;
-    buttonTopMechanismDepth = buttonDepth - buttonTopEdgeWidth; //buttonTopMechanismWidth + buttonDepthPadding;
-    buttonTopMechanismHeight = 10;
+    buttonTopMechanismDepth = buttonTopMechanismWidth + stempDepthPadding;
+//    buttonTopMechanismDepth = buttonDepth - buttonTopEdgeWidth; //buttonTopMechanismWidth + buttonDepthPadding;
+//    buttonTopMechanismHeight = 10;
+    //TODO vertical button padding?
     
     //button stem then has button clipped on, making it full width of base.
     buttomStemHeight = 1.5; //z space betwen button mechanism base and bottom of button top (what is pressed)
     buttonTopWidth = 10.5; //meaured at 10
-    buttonTopHeight = 3.5; //measured at 3.17 - this hsoudl really be open to air anyway in the z direction
-    buttonTopYsetback = 0.5;
+    buttonTopDepth = buttonTopWidth + buttonTopDepthPadding;
+    buttonTopHeight = 3.5 + buttonTopPadding; //measured at 3.17 - this shoudl really be open to air anyway in the z direction
+//    buttonTopYsetback = 0.5;
+    buttonTopYsetback = (buttonWidth - buttonTopWidth)/2;
     
     //main button body
     cube([buttonWidth,buttonDepth,buttonHeight]);
 
-    //button circle base
+    //button circle base & stem
     translate([buttonTopEdgeWidth,buttonTopEdgeWidth,buttonHeight]){
-        cube([buttonTopMechanismWidth,buttonTopMechanismDepth,buttonTopMechanismHeight]);
+        cube([buttonTopMechanismWidth,buttonTopMechanismDepth,buttomStemHeight]);
     }
 
     //space for little pegs on bottom of button
@@ -225,7 +262,7 @@ module buttonShape(){
     
     //button top
     translate([buttonWidth/2-buttonTopWidth/2,buttonTopYsetback,buttonHeight+buttomStemHeight]){
-        cube([buttonTopWidth,buttonTopMechanismDepth,buttonTopMechanismHeight]);
+        cube([buttonTopWidth,buttonTopDepth,buttonTopHeight]);
     }
 }
 //whitespace between modules
